@@ -1,0 +1,407 @@
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react';
+import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig } from '../types';
+import { loadData, saveData } from '../utils/storage';
+
+interface AppStoreContextValue {
+  data: AppData;
+  // People
+  addPerson: (p: Omit<Person, 'id'>) => Person;
+  updatePerson: (id: string, p: Partial<Omit<Person, 'id'>>) => void;
+  deletePerson: (id: string) => void;
+  // Delivery Units
+  addDeliveryUnit: (du: Omit<DeliveryUnit, 'id' | 'assignments' | 'releaseTrains'>) => DeliveryUnit;
+  updateDeliveryUnit: (id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'description'>>) => void;
+  deleteDeliveryUnit: (id: string) => void;
+  // Release Trains
+  addReleaseTrain: (duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>) => ReleaseTrain;
+  updateReleaseTrain: (duId: string, rtId: string, rt: Partial<Pick<ReleaseTrain, 'name' | 'description'>>) => void;
+  deleteReleaseTrain: (duId: string, rtId: string) => void;
+  // Squads
+  addSquad: (duId: string, rtId: string, sq: Omit<Squad, 'id' | 'assignments'>) => Squad;
+  updateSquad: (duId: string, rtId: string, sqId: string, sq: Partial<Pick<Squad, 'name' | 'description'>>) => void;
+  deleteSquad: (duId: string, rtId: string, sqId: string) => void;
+  // Assignments
+  addAssignmentToDU: (duId: string, assignment: Assignment) => void;
+  removeAssignmentFromDU: (duId: string, personId: string, role: string) => void;
+  addAssignmentToRT: (duId: string, rtId: string, assignment: Assignment) => void;
+  removeAssignmentFromRT: (duId: string, rtId: string, personId: string, role: string) => void;
+  addAssignmentToSquad: (duId: string, rtId: string, sqId: string, assignment: Assignment) => void;
+  removeAssignmentFromSquad: (duId: string, rtId: string, sqId: string, personId: string, role: string) => void;
+  // Lookup helpers
+  getPersonById: (id: string) => Person | undefined;
+  getDeliveryUnitById: (id: string) => DeliveryUnit | undefined;
+  getReleaseTrainById: (duId: string, rtId: string) => ReleaseTrain | undefined;
+  getSquadById: (duId: string, rtId: string, sqId: string) => Squad | undefined;
+  // Role config
+  addRole: (layer: keyof RoleConfig, role: string) => void;
+  removeRole: (layer: keyof RoleConfig, role: string) => void;
+}
+
+const AppStoreContext = createContext<AppStoreContextValue | null>(null);
+
+
+
+export function AppStoreProvider({ children }: { children: ReactNode }) {
+  const [data, setData] = useState<AppData>(() => loadData());
+
+  // ── People ──────────────────────────────────────────────────────────────────
+  const addPerson = useCallback((p: Omit<Person, 'id'>): Person => {
+    const person: Person = { id: crypto.randomUUID(), ...p };
+    setData((prev) => {
+      const next = { ...prev, people: [...prev.people, person] };
+      saveData(next);
+      return next;
+    });
+    return person;
+  }, []);
+
+  const updatePerson = useCallback((id: string, p: Partial<Omit<Person, 'id'>>) => {
+    setData((prev) => {
+      const next = { ...prev, people: prev.people.map((x) => (x.id === id ? { ...x, ...p } : x)) };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deletePerson = useCallback((id: string) => {
+    setData((prev) => {
+      // Remove all assignments referencing this person across the whole tree
+      const removeFrom = (assignments: Assignment[]) => assignments.filter((a) => a.personId !== id);
+      const next: AppData = {
+        roleConfig: prev.roleConfig,
+        people: prev.people.filter((p) => p.id !== id),
+        deliveryUnits: prev.deliveryUnits.map((du) => ({
+          ...du,
+          assignments: removeFrom(du.assignments),
+          releaseTrains: du.releaseTrains.map((rt) => ({
+            ...rt,
+            assignments: removeFrom(rt.assignments),
+            squads: rt.squads.map((sq) => ({ ...sq, assignments: removeFrom(sq.assignments) })),
+          })),
+        })),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Delivery Units ──────────────────────────────────────────────────────────
+  const addDeliveryUnit = useCallback((du: Omit<DeliveryUnit, 'id' | 'assignments' | 'releaseTrains'>): DeliveryUnit => {
+    const newDu: DeliveryUnit = { id: crypto.randomUUID(), assignments: [], releaseTrains: [], ...du };
+    setData((prev) => {
+      const next = { ...prev, deliveryUnits: [...prev.deliveryUnits, newDu] };
+      saveData(next);
+      return next;
+    });
+    return newDu;
+  }, []);
+
+  const updateDeliveryUnit = useCallback((id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'description'>>) => {
+    setData((prev) => {
+      const next = { ...prev, deliveryUnits: prev.deliveryUnits.map((x) => (x.id === id ? { ...x, ...du } : x)) };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deleteDeliveryUnit = useCallback((id: string) => {
+    setData((prev) => {
+      const next = { ...prev, deliveryUnits: prev.deliveryUnits.filter((x) => x.id !== id) };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Release Trains ──────────────────────────────────────────────────────────
+  const addReleaseTrain = useCallback((duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>): ReleaseTrain => {
+    const newRt: ReleaseTrain = { id: crypto.randomUUID(), assignments: [], squads: [], ...rt };
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId ? { ...du, releaseTrains: [...du.releaseTrains, newRt] } : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+    return newRt;
+  }, []);
+
+  const updateReleaseTrain = useCallback((duId: string, rtId: string, rt: Partial<Pick<ReleaseTrain, 'name' | 'description'>>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? { ...du, releaseTrains: du.releaseTrains.map((r) => (r.id === rtId ? { ...r, ...rt } : r)) }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deleteReleaseTrain = useCallback((duId: string, rtId: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId ? { ...du, releaseTrains: du.releaseTrains.filter((r) => r.id !== rtId) } : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Squads ──────────────────────────────────────────────────────────────────
+  const addSquad = useCallback((duId: string, rtId: string, sq: Omit<Squad, 'id' | 'assignments'>): Squad => {
+    const newSq: Squad = { id: crypto.randomUUID(), assignments: [], ...sq };
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId ? { ...rt, squads: [...rt.squads, newSq] } : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+    return newSq;
+  }, []);
+
+  const updateSquad = useCallback((duId: string, rtId: string, sqId: string, sq: Partial<Pick<Squad, 'name' | 'description'>>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId
+                    ? { ...rt, squads: rt.squads.map((s) => (s.id === sqId ? { ...s, ...sq } : s)) }
+                    : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deleteSquad = useCallback((duId: string, rtId: string, sqId: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId ? { ...rt, squads: rt.squads.filter((s) => s.id !== sqId) } : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Assignments – DU ────────────────────────────────────────────────────────
+  const addAssignmentToDU = useCallback((duId: string, assignment: Assignment) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId ? { ...du, assignments: [...du.assignments, assignment] } : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const removeAssignmentFromDU = useCallback((duId: string, personId: string, role: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? { ...du, assignments: du.assignments.filter((a) => !(a.personId === personId && a.role === role)) }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Assignments – RT ────────────────────────────────────────────────────────
+  const addAssignmentToRT = useCallback((duId: string, rtId: string, assignment: Assignment) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId ? { ...rt, assignments: [...rt.assignments, assignment] } : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const removeAssignmentFromRT = useCallback((duId: string, rtId: string, personId: string, role: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId
+                    ? { ...rt, assignments: rt.assignments.filter((a) => !(a.personId === personId && a.role === role)) }
+                    : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Assignments – Squad ─────────────────────────────────────────────────────
+  const addAssignmentToSquad = useCallback((duId: string, rtId: string, sqId: string, assignment: Assignment) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId
+                    ? {
+                        ...rt,
+                        squads: rt.squads.map((sq) =>
+                          sq.id === sqId ? { ...sq, assignments: [...sq.assignments, assignment] } : sq,
+                        ),
+                      }
+                    : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const removeAssignmentFromSquad = useCallback((duId: string, rtId: string, sqId: string, personId: string, role: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId
+                    ? {
+                        ...rt,
+                        squads: rt.squads.map((sq) =>
+                          sq.id === sqId
+                            ? { ...sq, assignments: sq.assignments.filter((a) => !(a.personId === personId && a.role === role)) }
+                            : sq,
+                        ),
+                      }
+                    : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Role Config ─────────────────────────────────────────────────────────────
+  const addRole = useCallback((layer: keyof RoleConfig, role: string) => {
+    setData((prev) => {
+      if (prev.roleConfig[layer].includes(role)) return prev;
+      const next = { ...prev, roleConfig: { ...prev.roleConfig, [layer]: [...prev.roleConfig[layer], role] } };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const removeRole = useCallback((layer: keyof RoleConfig, role: string) => {
+    setData((prev) => {
+      const next = { ...prev, roleConfig: { ...prev.roleConfig, [layer]: prev.roleConfig[layer].filter((r) => r !== role) } };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  // ── Lookup helpers ──────────────────────────────────────────────────────────
+  const getPersonById = useCallback((id: string) => data.people.find((p) => p.id === id), [data]);
+  const getDeliveryUnitById = useCallback((id: string) => data.deliveryUnits.find((d) => d.id === id), [data]);
+  const getReleaseTrainById = useCallback((duId: string, rtId: string) => data.deliveryUnits.find((d) => d.id === duId)?.releaseTrains.find((r) => r.id === rtId), [data]);
+  const getSquadById = useCallback((duId: string, rtId: string, sqId: string) => data.deliveryUnits.find((d) => d.id === duId)?.releaseTrains.find((r) => r.id === rtId)?.squads.find((s) => s.id === sqId), [data]);
+
+  return (
+    <AppStoreContext.Provider
+      value={{
+        data,
+        addPerson, updatePerson, deletePerson,
+        addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit,
+        addReleaseTrain, updateReleaseTrain, deleteReleaseTrain,
+        addSquad, updateSquad, deleteSquad,
+        addAssignmentToDU, removeAssignmentFromDU,
+        addAssignmentToRT, removeAssignmentFromRT,
+        addAssignmentToSquad, removeAssignmentFromSquad,
+        getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
+        addRole, removeRole,
+      }}
+    >
+      {children}
+    </AppStoreContext.Provider>
+  );
+}
+
+export function useAppStore(): AppStoreContextValue {
+  const ctx = useContext(AppStoreContext);
+  if (!ctx) throw new Error('useAppStore must be used within AppStoreProvider');
+  return ctx;
+}
