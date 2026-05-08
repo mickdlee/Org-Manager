@@ -10,7 +10,7 @@ import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH, personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
-import type { Assignment, AnyRole, SquadTemplate } from '../types';
+import type { AppData, Assignment, AnyRole, OpenPosition, SquadTemplate } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,9 +50,11 @@ export function SquadPage() {
   const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment, updateSquad, applySquadTemplate, updateSquadOnboarding } = useAppStore();
   const { isAdmin } = useAuth();
 
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAddPlaceholder, setShowAddPlaceholder] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<OpenPosition | null>(null);
   const [showEditTeam, setShowEditTeam] = useState(false);
   const [showApplyTemplate, setShowApplyTemplate] = useState(false);
+  const [unallocateTarget, setUnallocateTarget] = useState<Assignment | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
@@ -153,9 +155,9 @@ export function SquadPage() {
                       Apply Template
                     </Button>
                   )}
-                  <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)}>
+                  <Button size="sm" variant="secondary" onClick={() => setShowAddPlaceholder(true)}>
                     <UserPlus size={13} />
-                    Add Member
+                    Add Role Placeholder
                   </Button>
                 </div>
               )}
@@ -169,10 +171,10 @@ export function SquadPage() {
               <p className="text-sm text-gray-400">No members assigned yet.</p>
               {isAdmin && (
                 <button
-                  onClick={() => setShowAdd(true)}
+                  onClick={() => setShowAddPlaceholder(true)}
                   className="mt-3 text-sm text-blue-600 hover:underline"
                 >
-                  Add the first member
+                  Add the first role placeholder
                 </button>
               )}
             </div>
@@ -280,13 +282,22 @@ export function SquadPage() {
 
                     {/* Remove */}
                     {isAdmin && (
-                      <button
-                        onClick={() => setRemoveTarget(a)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all shrink-0 mt-0.5"
-                        title="Remove"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 shrink-0 mt-0.5">
+                        <button
+                          onClick={() => setUnallocateTarget(a)}
+                          className="text-gray-300 hover:text-amber-600 transition-all text-xs"
+                          title="Unallocate"
+                        >
+                          Unallocate
+                        </button>
+                        <button
+                          onClick={() => setRemoveTarget(a)}
+                          className="text-gray-300 hover:text-red-500 transition-all"
+                          title="Remove"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -309,11 +320,20 @@ export function SquadPage() {
                     </p>
                     <div className="flex items-center gap-2 mb-2 text-xs text-amber-800">
                       <span>Priority: {pos.priority}</span>
+                      <span>Allocation: {pos.allocationPercentage ?? 100}%</span>
                     </div>
                     <Badge color="amber">{pos.title}</Badge>
                     <p className="text-[11px] text-amber-700 mt-3">
                       Fill this role from the onboarding pipeline.
                     </p>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setAssignTarget(pos)}
+                        className="mt-2 text-xs text-blue-700 hover:underline"
+                      >
+                        Assign person to this role
+                      </button>
+                    )}
                   </div>
                   {isAdmin && (
                     <button
@@ -440,13 +460,44 @@ export function SquadPage() {
       </div>
 
       {/* ── Modals ───────────────────────────────────────────────────────── */}
-      {showAdd && (
-        <AddMemberModal
-          people={data.people}
+      {showAddPlaceholder && (
+        <AddRolePlaceholderModal
           availableRoles={data.roleConfig.squad as AnyRole[]}
+          onAdd={(role, count, priority, allocationPercentage) => {
+            updateSquadOnboarding(du.id, rt.id, sq.id, {
+              ...onboarding,
+              openPositions: [
+                ...onboarding.openPositions,
+                ...Array.from({ length: count }, () => ({ id: crypto.randomUUID(), title: role, priority, allocationPercentage })),
+              ],
+            });
+            setShowAddPlaceholder(false);
+          }}
+          onClose={() => setShowAddPlaceholder(false)}
+        />
+      )}
+
+      {assignTarget && (
+        <AssignRolePlaceholderModal
+          role={assignTarget.title}
+          allocationPercentage={assignTarget.allocationPercentage ?? 100}
+          data={data}
+          currentSquadName={sq.name}
+          people={data.people}
           existingAssignments={sq.assignments}
-          onAdd={(a) => { addAssignmentToSquad(du.id, rt.id, sq.id, a); setShowAdd(false); }}
-          onClose={() => setShowAdd(false)}
+          onAssign={(personId) => {
+            addAssignmentToSquad(du.id, rt.id, sq.id, {
+              personId,
+              role: assignTarget.title,
+              allocationPercentage: assignTarget.allocationPercentage ?? 100,
+            });
+            updateSquadOnboarding(du.id, rt.id, sq.id, {
+              ...onboarding,
+              openPositions: onboarding.openPositions.filter((p) => p.id !== assignTarget.id),
+            });
+            setAssignTarget(null);
+          }}
+          onClose={() => setAssignTarget(null)}
         />
       )}
 
@@ -460,6 +511,31 @@ export function SquadPage() {
             setRemoveTarget(null);
           }}
           onCancel={() => setRemoveTarget(null)}
+        />
+      )}
+
+      {unallocateTarget && (
+        <ConfirmDialog
+          title="Unallocate Member"
+          message={`Unallocate ${getPersonName(unallocateTarget.personId)} from ${unallocateTarget.role}? This will create an unfilled role placeholder.`}
+          confirmLabel="Unallocate"
+          onConfirm={() => {
+            updateSquadOnboarding(du.id, rt.id, sq.id, {
+              ...onboarding,
+              openPositions: [
+                ...onboarding.openPositions,
+                {
+                  id: crypto.randomUUID(),
+                  title: unallocateTarget.role,
+                  priority: 'Medium',
+                  allocationPercentage: unallocateTarget.allocationPercentage ?? 100,
+                },
+              ],
+            });
+            removeAssignmentFromSquad(du.id, rt.id, sq.id, unallocateTarget.personId, unallocateTarget.role as AnyRole);
+            setUnallocateTarget(null);
+          }}
+          onCancel={() => setUnallocateTarget(null)}
         />
       )}
 
@@ -489,19 +565,102 @@ export function SquadPage() {
   );
 }
 
-// ── Add Member Modal ──────────────────────────────────────────────────────────
+// ── Add Placeholder Modal ────────────────────────────────────────────────────
 
-interface AddMemberModalProps {
-  people: { id: string; name: string; email: string }[];
+interface AddRolePlaceholderModalProps {
   availableRoles: AnyRole[];
-  existingAssignments: Assignment[];
-  onAdd: (assignment: Assignment) => void;
+  onAdd: (role: AnyRole, count: number, priority: 'Low' | 'Medium' | 'High', allocationPercentage: number) => void;
   onClose: () => void;
 }
 
-function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, onClose }: AddMemberModalProps) {
-  const [personId, setPersonId] = useState('');
+function AddRolePlaceholderModal({ availableRoles, onAdd, onClose }: AddRolePlaceholderModalProps) {
   const [role, setRole] = useState<AnyRole>(availableRoles[0] ?? '');
+  const [count, setCount] = useState(1);
+  const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [allocation, setAllocation] = useState(100);
+  const [error, setError] = useState('');
+
+  const handleSubmit = () => {
+    if (!role) { setError('Please select a role.'); return; }
+    if (count < 1) { setError('Count must be at least 1.'); return; }
+    if (allocation < 0 || allocation > 100) { setError('Allocation must be between 0 and 100.'); return; }
+    onAdd(role, count, priority, allocation);
+  };
+
+  return (
+    <Modal title="Add Role Placeholder" onClose={onClose}>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Role</label>
+          <select
+            value={role}
+            onChange={(e) => { setRole(e.target.value as AnyRole); setError(''); }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          >
+            {availableRoles.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Count</label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={count}
+            onChange={(e) => { setCount(Math.max(1, Number(e.target.value))); setError(''); }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Priority</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as 'Low' | 'Medium' | 'High')}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          >
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Allocation (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={allocation}
+            onChange={(e) => { setAllocation(Math.max(0, Math.min(100, Number(e.target.value)))); setError(''); }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" onClick={handleSubmit}>Add Placeholder</Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Assign Placeholder Modal ─────────────────────────────────────────────────
+
+interface AssignRolePlaceholderModalProps {
+  role: string;
+  allocationPercentage: number;
+  data: AppData;
+  currentSquadName: string;
+  people: { id: string; name: string; email: string }[];
+  existingAssignments: Assignment[];
+  onAssign: (personId: string) => void;
+  onClose: () => void;
+}
+
+function AssignRolePlaceholderModal({ role, allocationPercentage, data, currentSquadName, people, existingAssignments, onAssign, onClose }: AssignRolePlaceholderModalProps) {
+  const [personId, setPersonId] = useState('');
   const [error, setError] = useState('');
 
   const availablePeople = people.filter(
@@ -510,13 +669,23 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
 
   const handleSubmit = () => {
     if (!personId) { setError('Please select a person.'); return; }
-    if (!role) { setError('Please select a role.'); return; }
-    onAdd({ personId, role, allocationPercentage: 100 });
+    onAssign(personId);
   };
 
+  const selectedPerson = people.find((p) => p.id === personId);
+  const currentTotal = selectedPerson ? personTotalAllocationPercent(data, selectedPerson.id) : 0;
+  const nextTotal = currentTotal + allocationPercentage;
+  const isOverAllocated = selectedPerson ? nextTotal > 100 : false;
+  const otherTeams = selectedPerson
+    ? personAllocationBreakdown(data, selectedPerson.id).filter((e) => e.sqName !== currentSquadName)
+    : [];
+
   return (
-    <Modal title="Add Member" onClose={onClose}>
+    <Modal title={`Assign ${role}`} onClose={onClose}>
       <div className="space-y-4">
+        <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          This placeholder will assign at <span className="font-semibold">{allocationPercentage}% allocation</span>.
+        </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1">Person</label>
           <select
@@ -530,21 +699,36 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
             ))}
           </select>
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Role</label>
-          <select
-            value={role}
-            onChange={(e) => { setRole(e.target.value as AnyRole); setError(''); }}
-            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          >
-            {availableRoles.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </div>
+        {selectedPerson && (
+          <div className={`rounded border px-3 py-2 text-xs ${isOverAllocated ? 'border-red-200 bg-red-50 text-red-700' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
+            <p>
+              Total allocation after assignment: <span className="font-semibold">{nextTotal}%</span>
+              {!isOverAllocated && <span> (currently {currentTotal}%)</span>}
+            </p>
+            {isOverAllocated && (
+              <p className="mt-1 font-medium">Warning: this person will be over-allocated.</p>
+            )}
+            {otherTeams.length > 0 && (
+              <div className="mt-2">
+                <p className="font-medium">Other teams this person is in:</p>
+                <div className="mt-1 space-y-1">
+                  {otherTeams.map((entry, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3">
+                      <span>{entry.sqName} · {entry.rtName} · {entry.duName}</span>
+                      <span className="font-semibold">{entry.allocation}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {availablePeople.length === 0 && (
+          <p className="text-xs text-amber-700">Everyone already has this role in this squad.</p>
+        )}
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div className="flex gap-2 pt-1">
-          <Button variant="secondary" onClick={handleSubmit}>Add Member</Button>
+          <Button variant="secondary" onClick={handleSubmit} disabled={availablePeople.length === 0}>Assign</Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
         </div>
       </div>

@@ -491,7 +491,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const tmpl = prev.squadTemplates.find((t) => t.id === templateId);
       if (!tmpl) return prev;
       const newPositions = tmpl.roles.flatMap(({ role, count }) =>
-        Array.from({ length: count }, () => ({ id: crypto.randomUUID(), title: role, priority: 'Medium' as const }))
+        Array.from({ length: count }, () => ({
+          id: crypto.randomUUID(),
+          title: role,
+          priority: 'Medium' as const,
+          allocationPercentage: 100,
+        }))
       );
       const next: AppData = {
         ...prev,

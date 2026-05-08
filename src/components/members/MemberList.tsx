@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Trash2 } from 'lucide-react';
+import { UserPlus, Trash2, Users2 } from 'lucide-react';
 import type { Assignment, AnyRole, Person } from '../../types';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -24,6 +24,26 @@ const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'>
   'Squad Member': 'gray',
 };
 
+const AVATAR_COLORS = [
+  'bg-blue-600', 'bg-indigo-600', 'bg-violet-600', 'bg-teal-600',
+  'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600',
+];
+
+function avatarColor(id: string) {
+  let hash = 0;
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('') || '?';
+}
+
 export function MemberList({ assignments, people, availableRoles, isAdmin, onAdd, onRemove }: MemberListProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
@@ -43,43 +63,59 @@ export function MemberList({ assignments, people, availableRoles, isAdmin, onAdd
       </div>
 
       {assignments.length === 0 ? (
-        <p className="text-sm text-gray-400 py-4 text-center">No members assigned yet.</p>
+        <div className="border border-dashed border-gray-200 rounded-lg py-10 text-center">
+          <Users2 size={24} className="mx-auto text-gray-300 mb-2" />
+          <p className="text-sm text-gray-400">No members assigned yet.</p>
+        </div>
       ) : (
-        <div className="border border-gray-200 rounded overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Name</th>
-                <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Email</th>
-                <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Role</th>
-                {isAdmin && <th className="px-4 py-2 w-10" />}
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((a, i) => {
-                const person = people.find((p) => p.id === a.personId);
-                return (
-                  <tr key={`${a.personId}-${a.role}-${i}`} className="border-b border-gray-100 last:border-0 even:bg-gray-50/50">
-                    <td className="px-4 py-2 font-medium text-gray-800">{person?.name ?? '—'}</td>
-                    <td className="px-4 py-2 text-gray-500">{person?.email ?? '—'}</td>
-                    <td className="px-4 py-2">
-                      <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
-                    </td>
-                    {isAdmin && (
-                      <td className="px-4 py-2 text-right">
-                        <button
-                          onClick={() => setRemoveTarget(a)}
-                          className="text-gray-300 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {assignments.map((a, i) => {
+            const person = people.find((p) => p.id === a.personId);
+            return (
+              <div
+                key={`${a.personId}-${a.role}-${i}`}
+                className="rounded-lg p-4 flex items-start gap-4 group hover:shadow-sm transition-all bg-white border border-gray-200 hover:border-gray-300"
+              >
+                {person?.photoUrl ? (
+                  <img
+                    src={person.photoUrl}
+                    alt={person.name}
+                    className="w-16 h-16 rounded-full object-cover shrink-0 ring-2 ring-gray-100"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.style.display = 'none';
+                      const fallback = img.nextElementSibling as HTMLElement | null;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div
+                  className={`w-16 h-16 rounded-full items-center justify-center text-white text-base font-semibold shrink-0 ${avatarColor(a.personId)} ${person?.photoUrl ? 'hidden' : 'flex'}`}
+                >
+                  {person ? initials(person.name) : '?'}
+                </div>
+
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-base font-semibold text-gray-800 truncate">{person?.name ?? 'Unknown'}</p>
+                  <p className="text-xs text-gray-400 truncate mb-2">{person?.email ?? '—'}</p>
+                  <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
+                    {person?.dayRate ? <span>${person.dayRate}/day</span> : <span>—</span>}
+                  </div>
+                  <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                </div>
+
+                {isAdmin && (
+                  <button
+                    onClick={() => setRemoveTarget(a)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all shrink-0 mt-0.5"
+                    title="Remove"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

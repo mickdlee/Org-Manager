@@ -68,6 +68,7 @@ export interface OpenPosition {
   id: string;
   title: string;
   priority: HiringPriority;
+  allocationPercentage?: number;
 }
 
 export interface SprintTask {

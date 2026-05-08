@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
-import { Train, Plus, Pencil, Trash2, Users, DollarSign } from 'lucide-react';
+import { Train, Plus, Pencil, Trash2, Users, DollarSign, Briefcase } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -96,7 +96,11 @@ export function DeliveryUnitPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {du.releaseTrains.map((rt) => (
+          {du.releaseTrains.map((rt) => {
+            const squadMembers = rt.squads.reduce((sum, sq) => sum + sq.assignments.length, 0);
+            const openRoles = rt.squads.reduce((sum, sq) => sum + (sq.onboarding?.openPositions.length ?? 0), 0);
+            const pipeline = rt.squads.reduce((sum, sq) => sum + (sq.onboarding?.candidates.length ?? 0), 0);
+            return (
             <Card key={rt.id} className="hover:border-gray-300 transition-colors">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -119,6 +123,31 @@ export function DeliveryUnitPage() {
                 <span className="flex items-center gap-1"><Users size={11} />{rt.assignments.length} member{rt.assignments.length !== 1 ? 's' : ''}</span>
                 <span>{rt.squads.length} squad{rt.squads.length !== 1 ? 's' : ''}</span>
               </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5">
+                  <p className="text-gray-400">Squad Members</p>
+                  <p className="font-semibold text-gray-700">{squadMembers}</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5">
+                  <p className="text-gray-400">Total Members</p>
+                  <p className="font-semibold text-gray-700">{rt.assignments.length + squadMembers}</p>
+                </div>
+                <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5">
+                  <p className="text-amber-700">Open Roles</p>
+                  <p className="font-semibold text-amber-800">{openRoles}</p>
+                </div>
+                <div className="rounded border border-blue-200 bg-blue-50 px-2 py-1.5">
+                  <p className="text-blue-700">Pipeline</p>
+                  <p className="font-semibold text-blue-800">{pipeline}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5">
+                  <Briefcase size={11} /> Delivery Readiness Snapshot
+                </span>
+              </div>
               {(() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = rtDailyCost(rt, getPerson);
@@ -132,7 +161,7 @@ export function DeliveryUnitPage() {
                 View Details
               </Button>
             </Card>
-          ))}
+          );})}
         </div>
       )}
 

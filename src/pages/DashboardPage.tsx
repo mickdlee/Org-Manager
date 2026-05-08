@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Train, Users, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Train, Users, Plus, Pencil, Trash2, Briefcase } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -47,7 +47,24 @@ export function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {data.deliveryUnits.map((du) => (
+          {data.deliveryUnits.map((du) => {
+            const totalSquads = du.releaseTrains.reduce((sum, rt) => sum + rt.squads.length, 0);
+            const duMembers = du.assignments.length;
+            const rtMembers = du.releaseTrains.reduce((sum, rt) => sum + rt.assignments.length, 0);
+            const squadMembers = du.releaseTrains.reduce(
+              (sum, rt) => sum + rt.squads.reduce((sqSum, sq) => sqSum + sq.assignments.length, 0),
+              0,
+            );
+            const totalOpenRoles = du.releaseTrains.reduce(
+              (sum, rt) => sum + rt.squads.reduce((sqSum, sq) => sqSum + (sq.onboarding?.openPositions.length ?? 0), 0),
+              0,
+            );
+            const totalCandidates = du.releaseTrains.reduce(
+              (sum, rt) => sum + rt.squads.reduce((sqSum, sq) => sqSum + (sq.onboarding?.candidates.length ?? 0), 0),
+              0,
+            );
+            const health = du.onboarding?.overallHealthStatus ?? 'Healthy';
+            return (
             <Card key={du.id} className="hover:border-gray-300 transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2 min-w-0">
@@ -74,6 +91,31 @@ export function DashboardPage() {
                 <span className="flex items-center gap-1"><Train size={12} /> {du.releaseTrains.length} Release Train{du.releaseTrains.length !== 1 ? 's' : ''}</span>
                 <span className="flex items-center gap-1"><Users size={12} /> {du.assignments.length} Member{du.assignments.length !== 1 ? 's' : ''}</span>
               </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs mb-4">
+                <div className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5">
+                  <p className="text-gray-400">Squads</p>
+                  <p className="font-semibold text-gray-700">{totalSquads}</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5">
+                  <p className="text-gray-400">All Members</p>
+                  <p className="font-semibold text-gray-700">{duMembers + rtMembers + squadMembers}</p>
+                </div>
+                <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5">
+                  <p className="text-amber-700">Open Roles</p>
+                  <p className="font-semibold text-amber-800">{totalOpenRoles}</p>
+                </div>
+                <div className="rounded border border-blue-200 bg-blue-50 px-2 py-1.5">
+                  <p className="text-blue-700">Pipeline</p>
+                  <p className="font-semibold text-blue-800">{totalCandidates}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs mb-4">
+                <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-gray-600">
+                  <Briefcase size={11} /> Health: {health}
+                </span>
+              </div>
               {(() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = duDailyCost(du, getPerson);
@@ -88,7 +130,7 @@ export function DashboardPage() {
                 View Details
               </Button>
             </Card>
-          ))}
+          );})}
         </div>
       )}
 
