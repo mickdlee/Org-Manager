@@ -3,26 +3,25 @@ import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD
 
 export function generateSeedData(): AppData {
   // ── People ──────────────────────────────────────────────────────────────────
-  // ── People (with day rates in USD and allocation % per person) ─────────────
   const people = [
-    { id: 'p01', name: 'Sarah Mitchell',   email: 'sarah.mitchell@example.com', photoUrl: 'https://i.pravatar.cc/160?img=1', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p02', name: 'James Okafor',     email: 'james.okafor@example.com', photoUrl: 'https://i.pravatar.cc/160?img=2', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p03', name: 'Priya Nair',       email: 'priya.nair@example.com', photoUrl: 'https://i.pravatar.cc/160?img=3', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p04', name: 'Tom Bergström',    email: 'tom.bergstrom@example.com', photoUrl: 'https://i.pravatar.cc/160?img=4', dayRate: 1200, allocationPercentage: 80 },
-    { id: 'p05', name: 'Amelia Rossi',     email: 'amelia.rossi@example.com', photoUrl: 'https://i.pravatar.cc/160?img=5', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p06', name: 'Chen Wei',         email: 'chen.wei@example.com', photoUrl: 'https://i.pravatar.cc/160?img=6', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p07', name: 'Marcus Johansson', email: 'marcus.johansson@example.com', photoUrl: 'https://i.pravatar.cc/160?img=7', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p08', name: 'Fatima Al-Hassan', email: 'fatima.alhassan@example.com', photoUrl: 'https://i.pravatar.cc/160?img=8', dayRate: 1200, allocationPercentage: 60 },
-    { id: 'p09', name: 'Liam Fitzgerald',  email: 'liam.fitzgerald@example.com', photoUrl: 'https://i.pravatar.cc/160?img=9', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p10', name: 'Yuki Tanaka',      email: 'yuki.tanaka@example.com', photoUrl: 'https://i.pravatar.cc/160?img=10', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p11', name: 'Natasha Ivanova',  email: 'natasha.ivanova@example.com', photoUrl: 'https://i.pravatar.cc/160?img=11', dayRate: 1200, allocationPercentage: 90 },
-    { id: 'p12', name: 'Daniel Ferreira',  email: 'daniel.ferreira@example.com', photoUrl: 'https://i.pravatar.cc/160?img=12', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p13', name: 'Esi Mensah',       email: 'esi.mensah@example.com', photoUrl: 'https://i.pravatar.cc/160?img=13', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p14', name: 'Oliver Nguyen',    email: 'oliver.nguyen@example.com', photoUrl: 'https://i.pravatar.cc/160?img=14', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p15', name: 'Ingrid Larsson',   email: 'ingrid.larsson@example.com', photoUrl: 'https://i.pravatar.cc/160?img=15', dayRate: 1200, allocationPercentage: 75 },
-    { id: 'p16', name: 'Rohan Kapoor',     email: 'rohan.kapoor@example.com', photoUrl: 'https://i.pravatar.cc/160?img=16', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p17', name: 'Chloe Dupont',     email: 'chloe.dupont@example.com', photoUrl: 'https://i.pravatar.cc/160?img=17', dayRate: 1200, allocationPercentage: 100 },
-    { id: 'p18', name: 'Kofi Acheampong',  email: 'kofi.acheampong@example.com', photoUrl: 'https://i.pravatar.cc/160?img=18', dayRate: 1200, allocationPercentage: 100 },
+    { id: 'p01', name: 'Sarah Mitchell',   email: 'sarah.mitchell@example.com', photoUrl: 'https://i.pravatar.cc/160?img=1', dayRate: 1200 },
+    { id: 'p02', name: 'James Okafor',     email: 'james.okafor@example.com', photoUrl: 'https://i.pravatar.cc/160?img=2', dayRate: 1200 },
+    { id: 'p03', name: 'Priya Nair',       email: 'priya.nair@example.com', photoUrl: 'https://i.pravatar.cc/160?img=3', dayRate: 1200 },
+    { id: 'p04', name: 'Tom Bergström',    email: 'tom.bergstrom@example.com', photoUrl: 'https://i.pravatar.cc/160?img=4', dayRate: 1200 },
+    { id: 'p05', name: 'Amelia Rossi',     email: 'amelia.rossi@example.com', photoUrl: 'https://i.pravatar.cc/160?img=5', dayRate: 1200 },
+    { id: 'p06', name: 'Chen Wei',         email: 'chen.wei@example.com', photoUrl: 'https://i.pravatar.cc/160?img=6', dayRate: 1200 },
+    { id: 'p07', name: 'Marcus Johansson', email: 'marcus.johansson@example.com', photoUrl: 'https://i.pravatar.cc/160?img=7', dayRate: 1200 },
+    { id: 'p08', name: 'Fatima Al-Hassan', email: 'fatima.alhassan@example.com', photoUrl: 'https://i.pravatar.cc/160?img=8', dayRate: 1200 },
+    { id: 'p09', name: 'Liam Fitzgerald',  email: 'liam.fitzgerald@example.com', photoUrl: 'https://i.pravatar.cc/160?img=9', dayRate: 1200 },
+    { id: 'p10', name: 'Yuki Tanaka',      email: 'yuki.tanaka@example.com', photoUrl: 'https://i.pravatar.cc/160?img=10', dayRate: 1200 },
+    { id: 'p11', name: 'Natasha Ivanova',  email: 'natasha.ivanova@example.com', photoUrl: 'https://i.pravatar.cc/160?img=11', dayRate: 1200 },
+    { id: 'p12', name: 'Daniel Ferreira',  email: 'daniel.ferreira@example.com', photoUrl: 'https://i.pravatar.cc/160?img=12', dayRate: 1200 },
+    { id: 'p13', name: 'Esi Mensah',       email: 'esi.mensah@example.com', photoUrl: 'https://i.pravatar.cc/160?img=13', dayRate: 1200 },
+    { id: 'p14', name: 'Oliver Nguyen',    email: 'oliver.nguyen@example.com', photoUrl: 'https://i.pravatar.cc/160?img=14', dayRate: 1200 },
+    { id: 'p15', name: 'Ingrid Larsson',   email: 'ingrid.larsson@example.com', photoUrl: 'https://i.pravatar.cc/160?img=15', dayRate: 1200 },
+    { id: 'p16', name: 'Rohan Kapoor',     email: 'rohan.kapoor@example.com', photoUrl: 'https://i.pravatar.cc/160?img=16', dayRate: 1200 },
+    { id: 'p17', name: 'Chloe Dupont',     email: 'chloe.dupont@example.com', photoUrl: 'https://i.pravatar.cc/160?img=17', dayRate: 1200 },
+    { id: 'p18', name: 'Kofi Acheampong',  email: 'kofi.acheampong@example.com', photoUrl: 'https://i.pravatar.cc/160?img=18', dayRate: 1200 },
   ];
 
   // ── Delivery Unit 1: Platform Engineering ───────────────────────────────────

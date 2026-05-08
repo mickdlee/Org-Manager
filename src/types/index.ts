@@ -35,7 +35,6 @@ export interface Person {
   email: string;
   photoUrl?: string;
   dayRate?: number;
-  allocationPercentage?: number;
 }
 
 export interface Assignment {

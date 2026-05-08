@@ -8,6 +8,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
+import { personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
 
 
 export function PeoplePage() {
@@ -61,13 +62,16 @@ export function PeoplePage() {
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Photo</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Day Rate ($)</th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Allocation (%)</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Total Team Allocation</th>
                 {isAdmin && <th className="px-4 py-3 w-20" />}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b border-gray-100 last:border-0 even:bg-gray-50/40">
+              {filtered.map((p) => {
+                const totalAllocation = personTotalAllocationPercent(data, p.id);
+                const isOverAllocated = totalAllocation > 100;
+                return (
+                <tr key={p.id} className={`border-b last:border-0 ${isOverAllocated ? 'bg-red-50 border-red-100' : 'border-gray-100 even:bg-gray-50/40'}`}>
                   <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
                   <td className="px-4 py-3 text-gray-500">{p.email}</td>
                   <td className="px-4 py-2 text-gray-600">
@@ -87,8 +91,30 @@ export function PeoplePage() {
                   <td className="px-4 py-3 text-gray-600">
                     {p.dayRate ? `$${p.dayRate}` : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {p.allocationPercentage ? `${p.allocationPercentage}%` : '—'}
+                  <td className={`px-4 py-3 font-semibold ${isOverAllocated ? 'text-red-700' : 'text-gray-700'}`}>
+                    <div className="relative inline-block group">
+                      <span className="cursor-default underline decoration-dotted decoration-gray-400">{totalAllocation}%</span>
+                      {(() => {
+                        const breakdown = personAllocationBreakdown(data, p.id);
+                        if (breakdown.length === 0) return null;
+                        return (
+                          <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block w-max min-w-48 bg-white border border-gray-200 rounded shadow-lg text-xs font-normal text-gray-700 py-2">
+                            {breakdown.map((entry, i) => (
+                              <div key={i} className="flex items-center justify-between gap-6 px-3 py-1 hover:bg-gray-50">
+                                <span className="text-gray-600">
+                                  <span className="font-medium text-gray-800">{entry.sqName}</span>
+                                  <span className="text-gray-400 mx-1">·</span>
+                                  {entry.rtName}
+                                  <span className="text-gray-400 mx-1">·</span>
+                                  {entry.duName}
+                                </span>
+                                <span className={`font-semibold ${isOverAllocated ? 'text-red-600' : 'text-gray-800'}`}>{entry.allocation}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </td>
                   {isAdmin && (
                     <td className="px-4 py-3">
@@ -103,7 +129,7 @@ export function PeoplePage() {
                     </td>
                   )}
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         )}
@@ -113,7 +139,7 @@ export function PeoplePage() {
         <PersonFormModal
           title="Add Person"
           onClose={() => setShowCreate(false)}
-          onSubmit={(name, email, photoUrl, dayRate, allocationPercentage) => { addPerson({ name, email, photoUrl, dayRate, allocationPercentage }); setShowCreate(false); }}
+          onSubmit={(name, email, photoUrl, dayRate) => { addPerson({ name, email, photoUrl, dayRate }); setShowCreate(false); }}
         />
       )}
       {editTarget && editPerson && (
@@ -123,9 +149,8 @@ export function PeoplePage() {
           initialEmail={editPerson.email}
           initialPhotoUrl={editPerson.photoUrl}
           initialDayRate={editPerson.dayRate}
-          initialAllocationPercentage={editPerson.allocationPercentage}
           onClose={() => setEditTarget(null)}
-          onSubmit={(name, email, photoUrl, dayRate, allocationPercentage) => { updatePerson(editTarget, { name, email, photoUrl, dayRate, allocationPercentage }); setEditTarget(null); }}
+          onSubmit={(name, email, photoUrl, dayRate) => { updatePerson(editTarget, { name, email, photoUrl, dayRate }); setEditTarget(null); }}
         />
       )}
       {deleteTarget && deletePerson_ && (
@@ -146,34 +171,30 @@ interface PersonFormModalProps {
   initialEmail?: string;
   initialPhotoUrl?: string;
   initialDayRate?: number;
-  initialAllocationPercentage?: number;
   onClose: () => void;
-  onSubmit: (name: string, email: string, photoUrl?: string, dayRate?: number, allocationPercentage?: number) => void;
+  onSubmit: (name: string, email: string, photoUrl?: string, dayRate?: number) => void;
 }
 
-function PersonFormModal({ title, initialName = '', initialEmail = '', initialPhotoUrl = '', initialDayRate, initialAllocationPercentage, onClose, onSubmit }: PersonFormModalProps) {
+function PersonFormModal({ title, initialName = '', initialEmail = '', initialPhotoUrl = '', initialDayRate, onClose, onSubmit }: PersonFormModalProps) {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
   const [dayRate, setDayRate] = useState(initialDayRate?.toString() ?? '');
-  const [allocationPercentage, setAllocationPercentage] = useState(initialAllocationPercentage?.toString() ?? '');
-  const [errors, setErrors] = useState<{ name?: string; email?: string; photoUrl?: string; dayRate?: string; allocationPercentage?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; email?: string; photoUrl?: string; dayRate?: string }>({});
 
   const handleSubmit = () => {
-    const errs: { name?: string; email?: string; photoUrl?: string; dayRate?: string; allocationPercentage?: string } = {};
+    const errs: { name?: string; email?: string; photoUrl?: string; dayRate?: string } = {};
     if (!name.trim()) errs.name = 'Name is required.';
     if (!email.trim()) errs.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email.';
     if (photoUrl.trim() && !/^https?:\/\//i.test(photoUrl.trim())) errs.photoUrl = 'Photo URL must start with http:// or https://';
     if (dayRate && (isNaN(Number(dayRate)) || Number(dayRate) < 0)) errs.dayRate = 'Enter a valid day rate.';
-    if (allocationPercentage && (isNaN(Number(allocationPercentage)) || Number(allocationPercentage) < 0 || Number(allocationPercentage) > 100)) errs.allocationPercentage = 'Enter a value between 0 and 100.';
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onSubmit(
       name.trim(),
       email.trim().toLowerCase(),
       photoUrl.trim() || undefined,
       dayRate ? Number(dayRate) : undefined,
-      allocationPercentage ? Number(allocationPercentage) : undefined,
     );
   };
 
@@ -188,7 +209,6 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialPh
         <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="e.g. jane@example.com" />
         <Input label="Photo URL" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} error={errors.photoUrl} placeholder="https://example.com/photo.jpg" />
         <Input label="Day Rate ($)" type="number" value={dayRate} onChange={(e) => setDayRate(e.target.value)} error={errors.dayRate} placeholder="e.g. 650" min="0" />
-        <Input label="Allocation (% per person)" type="number" value={allocationPercentage} onChange={(e) => setAllocationPercentage(e.target.value)} error={errors.allocationPercentage} placeholder="e.g. 100" min="0" max="100" />
       </div>
     </Modal>
   );

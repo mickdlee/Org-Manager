@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../components/ui/Modal';
 import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
-import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
+import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH, personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
 import type { Assignment, AnyRole } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -155,10 +155,16 @@ export function SquadPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {sq.assignments.map((a, i) => {
                 const person = data.people.find((p) => p.id === a.personId);
+                const totalAllocation = person ? personTotalAllocationPercent(data, person.id) : 0;
+                const isOverAllocated = totalAllocation > 100;
                 return (
                   <div
                     key={`${a.personId}-${a.role}-${i}`}
-                    className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-4 group hover:border-gray-300 hover:shadow-sm transition-all"
+                    className={`rounded-lg p-4 flex items-start gap-4 group hover:shadow-sm transition-all ${
+                      isOverAllocated
+                        ? 'bg-red-50 border border-red-200 hover:border-red-300'
+                        : 'bg-white border border-gray-200 hover:border-gray-300'
+                    }`}
                   >
                     {/* Avatar */}
                     {person?.photoUrl ? (
@@ -198,9 +204,32 @@ export function SquadPage() {
                       <div className="mt-3">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-gray-500">Allocation</span>
-                          <span className="text-xs font-semibold text-gray-700">
-                            {a.allocationPercentage ?? person?.allocationPercentage ?? 100}%
-                          </span>
+                          {person && (() => {
+                            const breakdown = personAllocationBreakdown(data, person.id);
+                            return (
+                              <div className="relative group/alloc">
+                                <span className={`text-xs font-semibold cursor-default underline decoration-dotted decoration-gray-400 ${isOverAllocated ? 'text-red-700' : 'text-gray-700'}`}>
+                                  {a.allocationPercentage ?? 100}%
+                                </span>
+                                {breakdown.length > 0 && (
+                                  <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover/alloc:block w-max min-w-48 bg-white border border-gray-200 rounded shadow-lg text-xs font-normal text-gray-700 py-2">
+                                    {breakdown.map((entry, i) => (
+                                      <div key={i} className="flex items-center justify-between gap-6 px-3 py-1 hover:bg-gray-50">
+                                        <span className="text-gray-600">
+                                          <span className="font-medium text-gray-800">{entry.sqName}</span>
+                                          <span className="text-gray-400 mx-1">·</span>
+                                          {entry.rtName}
+                                          <span className="text-gray-400 mx-1">·</span>
+                                          {entry.duName}
+                                        </span>
+                                        <span className={`font-semibold ${isOverAllocated ? 'text-red-600' : 'text-gray-800'}`}>{entry.allocation}%</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <input
                           type="range"
@@ -208,7 +237,7 @@ export function SquadPage() {
                           max={100}
                           step={5}
                           disabled={!isAdmin}
-                          value={a.allocationPercentage ?? person?.allocationPercentage ?? 100}
+                          value={a.allocationPercentage ?? 100}
                           onChange={(e) =>
                             updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
                               allocationPercentage: Number(e.target.value),
@@ -216,6 +245,11 @@ export function SquadPage() {
                           }
                           className="w-full h-1.5 accent-blue-600 cursor-pointer disabled:cursor-default"
                         />
+                        {isOverAllocated && (
+                          <p className="text-[11px] text-red-600 mt-1">
+                            Over-allocated across teams ({totalAllocation}%)
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -379,7 +413,7 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
   const handleSubmit = () => {
     if (!personId) { setError('Please select a person.'); return; }
     if (!role) { setError('Please select a role.'); return; }
-    onAdd({ personId, role });
+    onAdd({ personId, role, allocationPercentage: 100 });
   };
 
   return (
