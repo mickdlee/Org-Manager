@@ -49,7 +49,7 @@ function emptyOnboarding(): SquadOnboarding {
 
 export function SquadOnboardingPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
-  const { data, updateSquadOnboarding } = useAppStore();
+  const { data, updateSquadOnboarding, addPerson, addAssignmentToSquad } = useAppStore();
   const { isAdmin } = useAuth();
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
@@ -59,8 +59,25 @@ export function SquadOnboardingPage() {
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
 
   const ob: SquadOnboarding = sq.onboarding ?? emptyOnboarding();
+  const [datePrompt, setDatePrompt] = useState<{ candidateId: string; candidateName: string; nextStage: OnboardingStage } | null>(null);
+  const [personPrompt, setPersonPrompt] = useState<{ candidateId: string; candidateName: string; nextStage: OnboardingStage } | null>(null);
 
   const save = (next: SquadOnboarding) => updateSquadOnboarding(du.id, rt.id, sq.id, next);
+
+  const applyCandidateStageChange = (candidateId: string, nextStage: OnboardingStage, onboardingDate?: string) => {
+    save({
+      ...ob,
+      candidates: ob.candidates.map((x) =>
+        x.id === candidateId
+          ? {
+              ...x,
+              stage: nextStage,
+              onboardingDate: onboardingDate ?? x.onboardingDate,
+            }
+          : x,
+      ),
+    });
+  };
 
   const totalInPipeline = ob.candidates.length;
   const scheduledOffboardingCount = sq.assignments.filter((a) => a.isScheduledOffboarding).length;
@@ -134,9 +151,17 @@ export function SquadOnboardingPage() {
                             key={c.id}
                             candidate={c}
                             isAdmin={isAdmin}
-                            onChangeStage={(newStage) =>
-                              save({ ...ob, candidates: ob.candidates.map((x) => x.id === c.id ? { ...x, stage: newStage } : x) })
-                            }
+                            onChangeStage={(newStage) => {
+                              if (c.stage === 'Recruitment' && newStage !== 'Recruitment') {
+                                setDatePrompt({ candidateId: c.id, candidateName: c.name, nextStage: newStage });
+                                return;
+                              }
+                              if (c.stage === 'Pre-boarding' && newStage === 'Ramp-up') {
+                                setPersonPrompt({ candidateId: c.id, candidateName: c.name, nextStage: newStage });
+                                return;
+                              }
+                              applyCandidateStageChange(c.id, newStage);
+                            }}
                             onRemove={() =>
                               save({ ...ob, candidates: ob.candidates.filter((x) => x.id !== c.id) })
                             }
@@ -283,6 +308,54 @@ export function SquadOnboardingPage() {
           )}
         </aside>
       </div>
+
+      {datePrompt && (
+        <OnboardingDatePromptModal
+          candidateName={datePrompt.candidateName}
+          nextStage={datePrompt.nextStage}
+          onCancel={() => setDatePrompt(null)}
+          onConfirm={(date) => {
+            applyCandidateStageChange(datePrompt.candidateId, datePrompt.nextStage, date);
+            setDatePrompt(null);
+          }}
+        />
+      )}
+
+      {personPrompt && (
+        <CreatePersonPromptModal
+          candidateName={personPrompt.candidateName}
+          openPositions={ob.openPositions}
+          onCancel={() => setPersonPrompt(null)}
+          onConfirm={(person, selectedOpenPositionId) => {
+            const created = addPerson(person);
+            const selectedOpenPosition = ob.openPositions.find((p) => p.id === selectedOpenPositionId);
+            if (!selectedOpenPosition) {
+              setPersonPrompt(null);
+              return;
+            }
+
+            addAssignmentToSquad(du.id, rt.id, sq.id, {
+              personId: created.id,
+              role: selectedOpenPosition.title,
+              allocationPercentage: selectedOpenPosition.allocationPercentage ?? 100,
+            });
+
+            save({
+              ...ob,
+              candidates: ob.candidates.map((x) =>
+                x.id === personPrompt.candidateId
+                  ? {
+                      ...x,
+                      stage: personPrompt.nextStage,
+                    }
+                  : x,
+              ),
+              openPositions: ob.openPositions.filter((p) => p.id !== selectedOpenPositionId),
+            });
+            setPersonPrompt(null);
+          }}
+        />
+      )}
     </Layout>
   );
 }
@@ -313,7 +386,12 @@ function CandidateRow({ candidate, isAdmin, onChangeStage, onRemove }: {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="flex items-center gap-1.5 group text-xs">
-      <span className="flex-1 truncate text-gray-700 font-medium">{candidate.name}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block truncate text-gray-700 font-medium">{candidate.name}</span>
+        {candidate.onboardingDate && (
+          <span className="block text-[11px] text-gray-500">Onboarding: {candidate.onboardingDate}</span>
+        )}
+      </span>
       {isAdmin && (
         <>
           <select
@@ -342,6 +420,187 @@ function CandidateRow({ candidate, isAdmin, onChangeStage, onRemove }: {
         />
       )}
     </div>
+  );
+}
+
+function OnboardingDatePromptModal({
+  candidateName,
+  nextStage,
+  onCancel,
+  onConfirm,
+}: {
+  candidateName: string;
+  nextStage: OnboardingStage;
+  onCancel: () => void;
+  onConfirm: (date: string) => void;
+}) {
+  const [onboardingDate, setOnboardingDate] = useState(new Date().toISOString().slice(0, 10));
+  const [error, setError] = useState('');
+
+  return (
+    <Modal
+      title="Set Onboarding Date"
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button onClick={() => {
+            if (!onboardingDate) {
+              setError('Onboarding date is required.');
+              return;
+            }
+            onConfirm(onboardingDate);
+          }}>
+            Continue
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-gray-600">
+          Moving <span className="font-semibold text-gray-800">{candidateName}</span> from Recruitment to {nextStage}.
+        </p>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Onboarding Date</label>
+          <input
+            type="date"
+            value={onboardingDate}
+            onChange={(e) => setOnboardingDate(e.target.value)}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function CreatePersonPromptModal({
+  candidateName,
+  openPositions,
+  onCancel,
+  onConfirm,
+}: {
+  candidateName: string;
+  openPositions: OpenPosition[];
+  onCancel: () => void;
+  onConfirm: (person: { name: string; email: string; photoUrl?: string; dayRate?: number }, selectedOpenPositionId: string) => void;
+}) {
+  const [name, setName] = useState(candidateName);
+  const [email, setEmail] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [dayRate, setDayRate] = useState('');
+  const [selectedOpenPositionId, setSelectedOpenPositionId] = useState(openPositions[0]?.id ?? '');
+  const [error, setError] = useState('');
+
+  return (
+    <Modal
+      title="Create Person Record"
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (!name.trim()) {
+                setError('Name is required.');
+                return;
+              }
+              if (!email.trim()) {
+                setError('Email is required.');
+                return;
+              }
+              if (!selectedOpenPositionId) {
+                setError('Please select an unfilled role.');
+                return;
+              }
+              onConfirm({
+                name: name.trim(),
+                email: email.trim(),
+                photoUrl: photoUrl.trim() || undefined,
+                dayRate: dayRate ? Number(dayRate) : undefined,
+              }, selectedOpenPositionId);
+            }}
+          >
+            Create & Continue
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-gray-600">
+          To move <span className="font-semibold text-gray-800">{candidateName}</span> from Pre-boarding to Ramp-up, create their person record.
+        </p>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Unfilled Role</label>
+          <select
+            value={selectedOpenPositionId}
+            onChange={(e) => {
+              setSelectedOpenPositionId(e.target.value);
+              setError('');
+            }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          >
+            <option value="">Select role…</option>
+            {openPositions.map((pos) => (
+              <option key={pos.id} value={pos.id}>
+                {pos.title} ({pos.priority}, {pos.allocationPercentage ?? 100}%)
+              </option>
+            ))}
+          </select>
+          {openPositions.length === 0 && (
+            <p className="text-[11px] text-amber-600 mt-1">No unfilled roles available in this squad.</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Name</label>
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError('');
+            }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            placeholder="Full name"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError('');
+            }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            placeholder="name@example.com"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Photo URL (optional)</label>
+          <input
+            value={photoUrl}
+            onChange={(e) => setPhotoUrl(e.target.value)}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            placeholder="https://..."
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Day Rate (optional)</label>
+          <input
+            type="number"
+            min={0}
+            value={dayRate}
+            onChange={(e) => setDayRate(e.target.value)}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            placeholder="1200"
+          />
+        </div>
+        {error && <p className="text-xs text-red-500">{error}</p>}
+      </div>
+    </Modal>
   );
 }
 

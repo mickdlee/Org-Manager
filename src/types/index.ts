@@ -63,6 +63,7 @@ export interface OnboardingCandidate {
   id: string;
   name: string;
   stage: OnboardingStage;
+  onboardingDate?: string;
 }
 
 export interface OpenPosition {
