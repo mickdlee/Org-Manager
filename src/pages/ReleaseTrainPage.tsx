@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
-import { Shield, Plus, Pencil, Trash2, Users, DollarSign } from 'lucide-react';
+import { Shield, Plus, Pencil, Trash2, Users, DollarSign, ChevronDown } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -140,6 +140,32 @@ export function ReleaseTrainPage() {
                 &nbsp;·&nbsp;
                 <span className="font-medium text-gray-700">Ramp-up:</span> {avgRampUpDays} days
               </p>
+
+              <details className="mb-3 rounded border border-gray-200 bg-gray-50 group">
+                <summary className="list-none cursor-pointer select-none px-3 py-2 text-xs font-medium text-gray-700 flex items-center justify-between">
+                  <span>Squad Members</span>
+                  <ChevronDown size={13} className="text-gray-400 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="border-t border-gray-200 px-3 py-2">
+                  {sq.assignments.length === 0 ? (
+                    <p className="text-xs text-gray-400">No members assigned.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {sq.assignments.map((assignment, idx) => {
+                        const person = data.people.find((p) => p.id === assignment.personId);
+                        return (
+                          <div key={`${assignment.personId}-${assignment.role}-${idx}`} className="text-xs grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+                            <span className="text-gray-700 truncate">{person?.name ?? 'Unknown'}</span>
+                            <span className="text-gray-500">{assignment.role}</span>
+                            <span className="font-medium text-gray-700">{assignment.allocationPercentage ?? 100}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </details>
+
               {showFinancials && (() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = squadDailyCost(sq, getPerson);
