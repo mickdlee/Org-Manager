@@ -33,6 +33,7 @@ interface AppStoreContextValue {
   removeAssignmentFromRT: (duId: string, rtId: string, personId: string, role: string) => void;
   addAssignmentToSquad: (duId: string, rtId: string, sqId: string, assignment: Assignment) => void;
   removeAssignmentFromSquad: (duId: string, rtId: string, sqId: string, personId: string, role: string) => void;
+  updateSquadAssignment: (duId: string, rtId: string, sqId: string, personId: string, role: string, patch: Partial<Assignment>) => void;
   // Lookup helpers
   getPersonById: (id: string) => Person | undefined;
   getDeliveryUnitById: (id: string) => DeliveryUnit | undefined;
@@ -331,6 +332,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateSquadAssignment = useCallback((duId: string, rtId: string, sqId: string, personId: string, role: string, patch: Partial<Assignment>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId
+                    ? {
+                        ...rt,
+                        squads: rt.squads.map((sq) =>
+                          sq.id === sqId
+                            ? {
+                                ...sq,
+                                assignments: sq.assignments.map((a) =>
+                                  a.personId === personId && a.role === role ? { ...a, ...patch } : a,
+                                ),
+                              }
+                            : sq,
+                        ),
+                      }
+                    : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   const removeAssignmentFromSquad = useCallback((duId: string, rtId: string, sqId: string, personId: string, role: string) => {
     setData((prev) => {
       const next = {
@@ -435,7 +470,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addSquad, updateSquad, deleteSquad,
         addAssignmentToDU, removeAssignmentFromDU,
         addAssignmentToRT, removeAssignmentFromRT,
-        addAssignmentToSquad, removeAssignmentFromSquad,
+        addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment,
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
         addRole, removeRole, resetToSampleData, updateSquadOnboarding, updateDeliveryUnitOnboarding,
       }}

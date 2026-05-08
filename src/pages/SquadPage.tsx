@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight } from 'lucide-react';
+import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -8,6 +8,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
+import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import type { Assignment, AnyRole } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'>
 
 export function SquadPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
-  const { data, addAssignmentToSquad, removeAssignmentFromSquad } = useAppStore();
+  const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment } = useAppStore();
   const { isAdmin } = useAuth();
 
   const [showAdd, setShowAdd] = useState(false);
@@ -107,12 +108,23 @@ export function SquadPage() {
                 {sq.assignments.length}
               </span>
             </div>
-            {isAdmin && (
-              <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)}>
-                <UserPlus size={13} />
-                Add Member
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              {sq.assignments.length > 0 && (() => {
+                const daily = squadDailyCost(sq, (id) => data.people.find((p) => p.id === id));
+                return (
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-gray-700">{formatCost(daily)}<span className="text-gray-400 font-normal">/day</span></p>
+                    <p className="text-xs text-gray-400">{formatCost(daily * WORKING_DAYS_PER_MONTH)}/mo</p>
+                  </div>
+                );
+              })()}
+              {isAdmin && (
+                <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)}>
+                  <UserPlus size={13} />
+                  Add Member
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Member cards */}
@@ -136,22 +148,65 @@ export function SquadPage() {
                 return (
                   <div
                     key={`${a.personId}-${a.role}-${i}`}
-                    className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-3 group hover:border-gray-300 hover:shadow-sm transition-all"
+                    className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-4 group hover:border-gray-300 hover:shadow-sm transition-all"
                   >
                     {/* Avatar */}
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 ${avatarColor(a.personId)}`}>
+                    {person?.photoUrl ? (
+                      <img
+                        src={person.photoUrl}
+                        alt={person.name}
+                        className="w-16 h-16 rounded-full object-cover shrink-0 ring-2 ring-gray-100"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.display = 'none';
+                          const fallback = img.nextElementSibling as HTMLElement | null;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`w-16 h-16 rounded-full items-center justify-center text-white text-base font-semibold shrink-0 ${avatarColor(a.personId)} ${person?.photoUrl ? 'hidden' : 'flex'}`}
+                    >
                       {person ? initials(person.name) : '?'}
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <p className="text-base font-semibold text-gray-800 truncate">
                         {person?.name ?? 'Unknown'}
                       </p>
                       <p className="text-xs text-gray-400 truncate mb-2">
                         {person?.email ?? '—'}
                       </p>
+                      <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
+                        {person?.dayRate && (
+                          <span>${person.dayRate}/day</span>
+                        )}
+                      </div>
                       <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                      {/* Allocation slider */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500">Allocation</span>
+                          <span className="text-xs font-semibold text-gray-700">
+                            {a.allocationPercentage ?? person?.allocationPercentage ?? 100}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          disabled={!isAdmin}
+                          value={a.allocationPercentage ?? person?.allocationPercentage ?? 100}
+                          onChange={(e) =>
+                            updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
+                              allocationPercentage: Number(e.target.value),
+                            })
+                          }
+                          className="w-full h-1.5 accent-blue-600 cursor-pointer disabled:cursor-default"
+                        />
+                      </div>
                     </div>
 
                     {/* Remove */}

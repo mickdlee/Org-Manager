@@ -59,6 +59,9 @@ export function PeoplePage() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Photo</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Day Rate ($)</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Allocation (%)</th>
                 {isAdmin && <th className="px-4 py-3 w-20" />}
               </tr>
             </thead>
@@ -67,6 +70,26 @@ export function PeoplePage() {
                 <tr key={p.id} className="border-b border-gray-100 last:border-0 even:bg-gray-50/40">
                   <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
                   <td className="px-4 py-3 text-gray-500">{p.email}</td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {p.photoUrl ? (
+                      <img src={p.photoUrl} alt={p.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-200 text-gray-600 text-sm font-semibold flex items-center justify-center">
+                        {p.name
+                          .split(' ')
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((w) => w[0]?.toUpperCase())
+                          .join('') || '?'}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {p.dayRate ? `$${p.dayRate}` : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {p.allocationPercentage ? `${p.allocationPercentage}%` : '—'}
+                  </td>
                   {isAdmin && (
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
@@ -90,7 +113,7 @@ export function PeoplePage() {
         <PersonFormModal
           title="Add Person"
           onClose={() => setShowCreate(false)}
-          onSubmit={(name, email) => { addPerson({ name, email }); setShowCreate(false); }}
+          onSubmit={(name, email, photoUrl, dayRate, allocationPercentage) => { addPerson({ name, email, photoUrl, dayRate, allocationPercentage }); setShowCreate(false); }}
         />
       )}
       {editTarget && editPerson && (
@@ -98,8 +121,11 @@ export function PeoplePage() {
           title="Edit Person"
           initialName={editPerson.name}
           initialEmail={editPerson.email}
+          initialPhotoUrl={editPerson.photoUrl}
+          initialDayRate={editPerson.dayRate}
+          initialAllocationPercentage={editPerson.allocationPercentage}
           onClose={() => setEditTarget(null)}
-          onSubmit={(name, email) => { updatePerson(editTarget, { name, email }); setEditTarget(null); }}
+          onSubmit={(name, email, photoUrl, dayRate, allocationPercentage) => { updatePerson(editTarget, { name, email, photoUrl, dayRate, allocationPercentage }); setEditTarget(null); }}
         />
       )}
       {deleteTarget && deletePerson_ && (
@@ -118,22 +144,37 @@ interface PersonFormModalProps {
   title: string;
   initialName?: string;
   initialEmail?: string;
+  initialPhotoUrl?: string;
+  initialDayRate?: number;
+  initialAllocationPercentage?: number;
   onClose: () => void;
-  onSubmit: (name: string, email: string) => void;
+  onSubmit: (name: string, email: string, photoUrl?: string, dayRate?: number, allocationPercentage?: number) => void;
 }
 
-function PersonFormModal({ title, initialName = '', initialEmail = '', onClose, onSubmit }: PersonFormModalProps) {
+function PersonFormModal({ title, initialName = '', initialEmail = '', initialPhotoUrl = '', initialDayRate, initialAllocationPercentage, onClose, onSubmit }: PersonFormModalProps) {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
-  const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+  const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
+  const [dayRate, setDayRate] = useState(initialDayRate?.toString() ?? '');
+  const [allocationPercentage, setAllocationPercentage] = useState(initialAllocationPercentage?.toString() ?? '');
+  const [errors, setErrors] = useState<{ name?: string; email?: string; photoUrl?: string; dayRate?: string; allocationPercentage?: string }>({});
 
   const handleSubmit = () => {
-    const errs: { name?: string; email?: string } = {};
+    const errs: { name?: string; email?: string; photoUrl?: string; dayRate?: string; allocationPercentage?: string } = {};
     if (!name.trim()) errs.name = 'Name is required.';
     if (!email.trim()) errs.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email.';
+    if (photoUrl.trim() && !/^https?:\/\//i.test(photoUrl.trim())) errs.photoUrl = 'Photo URL must start with http:// or https://';
+    if (dayRate && (isNaN(Number(dayRate)) || Number(dayRate) < 0)) errs.dayRate = 'Enter a valid day rate.';
+    if (allocationPercentage && (isNaN(Number(allocationPercentage)) || Number(allocationPercentage) < 0 || Number(allocationPercentage) > 100)) errs.allocationPercentage = 'Enter a value between 0 and 100.';
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    onSubmit(name.trim(), email.trim().toLowerCase());
+    onSubmit(
+      name.trim(),
+      email.trim().toLowerCase(),
+      photoUrl.trim() || undefined,
+      dayRate ? Number(dayRate) : undefined,
+      allocationPercentage ? Number(allocationPercentage) : undefined,
+    );
   };
 
   return (
@@ -145,6 +186,9 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', onClose, 
       <div className="space-y-4">
         <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} placeholder="e.g. Jane Smith" />
         <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="e.g. jane@example.com" />
+        <Input label="Photo URL" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} error={errors.photoUrl} placeholder="https://example.com/photo.jpg" />
+        <Input label="Day Rate ($)" type="number" value={dayRate} onChange={(e) => setDayRate(e.target.value)} error={errors.dayRate} placeholder="e.g. 650" min="0" />
+        <Input label="Allocation (% per person)" type="number" value={allocationPercentage} onChange={(e) => setAllocationPercentage(e.target.value)} error={errors.allocationPercentage} placeholder="e.g. 100" min="0" max="100" />
       </div>
     </Modal>
   );

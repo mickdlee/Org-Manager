@@ -1,4 +1,5 @@
 import { LogOut, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Badge } from '../ui/Badge';
 
@@ -18,7 +19,13 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
             {breadcrumbs.map((bc, i) => (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <span>/</span>}
-                <span className={bc.to ? 'hover:underline cursor-pointer text-gray-500' : ''}>{bc.label}</span>
+                {bc.to ? (
+                  <Link to={bc.to} className="hover:underline text-gray-500 hover:text-gray-700">
+                    {bc.label}
+                  </Link>
+                ) : (
+                  <span className="text-gray-600">{bc.label}</span>
+                )}
               </span>
             ))}
           </nav>

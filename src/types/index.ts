@@ -25,11 +25,15 @@ export interface Person {
   id: string;
   name: string;
   email: string;
+  photoUrl?: string;
+  dayRate?: number;
+  allocationPercentage?: number;
 }
 
 export interface Assignment {
   personId: string;
   role: AnyRole;
+  allocationPercentage?: number;
 }
 
 // Onboarding types

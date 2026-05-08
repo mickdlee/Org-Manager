@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
-import { Train, Plus, Pencil, Trash2, Users } from 'lucide-react';
+import { Train, Plus, Pencil, Trash2, Users, DollarSign } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -10,6 +10,7 @@ import { Input, TextArea } from '../components/ui/Input';
 import { MemberList } from '../components/members/MemberList';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
+import { duDailyCost, rtDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import type { AnyRole } from '../types';
 
 export function DeliveryUnitPage() {
@@ -48,7 +49,22 @@ export function DeliveryUnitPage() {
 
       {du.description && <p className="text-sm text-gray-500 mb-6">{du.description}</p>}
 
-      {/* Members */}
+      {/* Cost summary */}
+      {(() => {
+        const getPerson = (id: string) => data.people.find((p) => p.id === id);
+        const daily = duDailyCost(du, getPerson);
+        if (!daily) return null;
+        return (
+          <div className="flex items-center gap-6 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 mb-6">
+            <DollarSign size={16} className="text-blue-400 shrink-0" />
+            <div className="flex items-center gap-6 text-sm">
+              <span className="text-gray-600"><span className="font-semibold text-gray-800">{formatCost(daily)}</span> /day</span>
+              <span className="text-gray-600"><span className="font-semibold text-gray-800">{formatCost(daily * WORKING_DAYS_PER_MONTH)}</span> /month</span>
+              <span className="text-xs text-gray-400">total across all teams</span>
+            </div>
+          </div>
+        );
+      })()}
       <Card className="mb-6">
         <MemberList
           assignments={du.assignments}
@@ -103,6 +119,15 @@ export function DeliveryUnitPage() {
                 <span className="flex items-center gap-1"><Users size={11} />{rt.assignments.length} member{rt.assignments.length !== 1 ? 's' : ''}</span>
                 <span>{rt.squads.length} squad{rt.squads.length !== 1 ? 's' : ''}</span>
               </div>
+              {(() => {
+                const getPerson = (id: string) => data.people.find((p) => p.id === id);
+                const daily = rtDailyCost(rt, getPerson);
+                return daily > 0 ? (
+                  <p className="text-xs text-gray-500 mb-3">
+                    <span className="font-semibold text-gray-700">{formatCost(daily)}</span>/day &nbsp;·&nbsp; {formatCost(daily * WORKING_DAYS_PER_MONTH)}/mo
+                  </p>
+                ) : null;
+              })()}
               <Button variant="ghost" size="sm" onClick={() => navigate(`/release-trains/${du.id}/${rt.id}`)}>
                 View Details
               </Button>

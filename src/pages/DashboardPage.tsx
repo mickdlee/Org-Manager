@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/ui/Modal';
 import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
+import { duDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 
 export function DashboardPage() {
   const { data, addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit } = useAppStore();
@@ -69,6 +70,15 @@ export function DashboardPage() {
                 <span className="flex items-center gap-1"><Train size={12} /> {du.releaseTrains.length} Release Train{du.releaseTrains.length !== 1 ? 's' : ''}</span>
                 <span className="flex items-center gap-1"><Users size={12} /> {du.assignments.length} Member{du.assignments.length !== 1 ? 's' : ''}</span>
               </div>
+              {(() => {
+                const getPerson = (id: string) => data.people.find((p) => p.id === id);
+                const daily = duDailyCost(du, getPerson);
+                return daily > 0 ? (
+                  <p className="text-xs text-gray-500 mb-4">
+                    <span className="font-semibold text-gray-700">{formatCost(daily)}</span>/day &nbsp;·&nbsp; <span className="font-semibold text-gray-700">{formatCost(daily * WORKING_DAYS_PER_MONTH)}</span>/mo
+                  </p>
+                ) : null;
+              })()}
 
               <Button variant="ghost" size="sm" onClick={() => navigate(`/delivery-units/${du.id}`)}>
                 View Details
