@@ -10,6 +10,7 @@ import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { duDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
+import { DELIVERY_UNIT_TYPES, type DeliveryUnitType } from '../types';
 
 export function DashboardPage() {
   const { data, addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit } = useAppStore();
@@ -64,6 +65,9 @@ export function DashboardPage() {
                   </div>
                 )}
               </div>
+              <p className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5 inline-block mb-2">
+                {du.type}
+              </p>
               {du.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{du.description}</p>}
 
               <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
@@ -92,8 +96,8 @@ export function DashboardPage() {
         <EntityFormModal
           title="New Delivery Unit"
           onClose={() => setShowCreate(false)}
-          onSubmit={(name, description) => {
-            addDeliveryUnit({ name, description });
+          onSubmit={(name, type, description) => {
+            addDeliveryUnit({ name, type, description });
             setShowCreate(false);
           }}
         />
@@ -103,10 +107,11 @@ export function DashboardPage() {
         <EntityFormModal
           title="Edit Delivery Unit"
           initialName={editDu.name}
+          initialType={editDu.type}
           initialDescription={editDu.description}
           onClose={() => setEditTarget(null)}
-          onSubmit={(name, description) => {
-            updateDeliveryUnit(editTarget, { name, description });
+          onSubmit={(name, type, description) => {
+            updateDeliveryUnit(editTarget, { name, type, description });
             setEditTarget(null);
           }}
         />
@@ -127,19 +132,21 @@ export function DashboardPage() {
 interface EntityFormModalProps {
   title: string;
   initialName?: string;
+  initialType?: DeliveryUnitType;
   initialDescription?: string;
   onClose: () => void;
-  onSubmit: (name: string, description: string) => void;
+  onSubmit: (name: string, type: DeliveryUnitType, description: string) => void;
 }
 
-function EntityFormModal({ title, initialName = '', initialDescription = '', onClose, onSubmit }: EntityFormModalProps) {
+function EntityFormModal({ title, initialName = '', initialType = 'Supporting', initialDescription = '', onClose, onSubmit }: EntityFormModalProps) {
   const [name, setName] = useState(initialName);
+  const [type, setType] = useState<DeliveryUnitType>(initialType);
   const [description, setDescription] = useState(initialDescription);
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim()) { setError('Name is required.'); return; }
-    onSubmit(name.trim(), description.trim());
+    onSubmit(name.trim(), type, description.trim());
   };
 
   return (
@@ -155,6 +162,18 @@ function EntityFormModal({ title, initialName = '', initialDescription = '', onC
     >
       <div className="space-y-4">
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} error={error} placeholder="e.g. Platform Engineering" />
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Type</label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as DeliveryUnitType)}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          >
+            {DELIVERY_UNIT_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
         <TextArea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Optional description…" />
       </div>
     </Modal>

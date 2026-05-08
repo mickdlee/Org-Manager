@@ -16,7 +16,7 @@ interface AppStoreContextValue {
   deletePerson: (id: string) => void;
   // Delivery Units
   addDeliveryUnit: (du: Omit<DeliveryUnit, 'id' | 'assignments' | 'releaseTrains'>) => DeliveryUnit;
-  updateDeliveryUnit: (id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'description'>>) => void;
+  updateDeliveryUnit: (id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'type' | 'description'>>) => void;
   deleteDeliveryUnit: (id: string) => void;
   // Release Trains
   addReleaseTrain: (duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>) => ReleaseTrain;
@@ -107,7 +107,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return newDu;
   }, []);
 
-  const updateDeliveryUnit = useCallback((id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'description'>>) => {
+  const updateDeliveryUnit = useCallback((id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'type' | 'description'>>) => {
     setData((prev) => {
       const next = { ...prev, deliveryUnits: prev.deliveryUnits.map((x) => (x.id === id ? { ...x, ...du } : x)) };
       saveData(next);

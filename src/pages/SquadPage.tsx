@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign } from 'lucide-react';
+import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign, Pencil } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
+import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
@@ -46,10 +47,11 @@ const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'>
 
 export function SquadPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
-  const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment } = useAppStore();
+  const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment, updateSquad } = useAppStore();
   const { isAdmin } = useAuth();
 
   const [showAdd, setShowAdd] = useState(false);
+  const [showEditTeam, setShowEditTeam] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
@@ -87,6 +89,14 @@ export function SquadPage() {
         >
           Onboarding
         </Link>
+        <div className="ml-auto pb-2">
+          {isAdmin && (
+            <Button size="sm" variant="ghost" onClick={() => setShowEditTeam(true)}>
+              <Pencil size={13} />
+              Edit Team
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Description */}
@@ -331,6 +341,18 @@ export function SquadPage() {
           onCancel={() => setRemoveTarget(null)}
         />
       )}
+
+      {showEditTeam && (
+        <EditTeamModal
+          initialName={sq.name}
+          initialDescription={sq.description}
+          onClose={() => setShowEditTeam(false)}
+          onSave={(name, description) => {
+            updateSquad(du.id, rt.id, sq.id, { name, description });
+            setShowEditTeam(false);
+          }}
+        />
+      )}
     </Layout>
   );
 }
@@ -393,6 +415,60 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
           <Button variant="secondary" onClick={handleSubmit}>Add Member</Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+interface EditTeamModalProps {
+  initialName: string;
+  initialDescription: string;
+  onClose: () => void;
+  onSave: (name: string, description: string) => void;
+}
+
+function EditTeamModal({ initialName, initialDescription, onClose, onSave }: EditTeamModalProps) {
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
+  const [error, setError] = useState('');
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      setError('Team name is required.');
+      return;
+    }
+    onSave(name.trim(), description.trim());
+  };
+
+  return (
+    <Modal
+      title="Edit Team"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave}>Save</Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          label="Team Name"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError('');
+          }}
+          error={error}
+          placeholder="e.g. Platform Core"
+        />
+        <TextArea
+          label="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          placeholder="Describe this team..."
+        />
       </div>
     </Modal>
   );

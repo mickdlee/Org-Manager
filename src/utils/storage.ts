@@ -21,6 +21,17 @@ export function loadData(): AppData {
           squad: [...DEFAULT_SQUAD_ROLES],
         };
       }
+
+      // Migrate: seed deliveryUnit.type if absent in older saved data
+      parsed.deliveryUnits = parsed.deliveryUnits.map((du) => {
+        if (du.type) return du;
+        const inferredType = du.name.toLowerCase().includes('platform')
+          ? 'Platform'
+          : du.name.toLowerCase().includes('customer')
+            ? 'Customer Journey'
+            : 'Supporting';
+        return { ...du, type: inferredType };
+      });
       return parsed;
     }
   } catch {

@@ -29,6 +29,8 @@ export function generateSeedData(): AppData {
   const du1 = {
     id: 'du01',
     name: 'Platform Engineering',
+    type: 'Platform' as const,
+    type: 'Customer Journey' as const,
     description: 'Owns the internal developer platform, infrastructure, and shared services that underpin all product delivery.',
     assignments: [
       { personId: 'p01', role: 'Delivery Unit Owner' },

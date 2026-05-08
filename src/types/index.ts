@@ -15,6 +15,14 @@ export const DEFAULT_RELEASE_TRAIN_ROLES = [
 
 export const DEFAULT_SQUAD_ROLES = ['Squad Member'] as const;
 
+export type DeliveryUnitType = 'Customer Journey' | 'Platform' | 'Supporting';
+
+export const DELIVERY_UNIT_TYPES: DeliveryUnitType[] = [
+  'Customer Journey',
+  'Platform',
+  'Supporting',
+];
+
 export interface RoleConfig {
   deliveryUnit: string[];
   releaseTrain: string[];
@@ -96,6 +104,7 @@ export interface ReleaseTrain {
 export interface DeliveryUnit {
   id: string;
   name: string;
+  type: DeliveryUnitType;
   description: string;
   assignments: Assignment[];
   releaseTrains: ReleaseTrain[];
