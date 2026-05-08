@@ -1,5 +1,6 @@
 import type { AppData, AppUser, Session } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
+import { generateSeedData } from './seed';
 
 const DATA_KEY = 'org_manager_data';
 const USERS_KEY = 'org_manager_users';
@@ -25,15 +26,16 @@ export function loadData(): AppData {
   } catch {
     // corrupt data – start fresh
   }
-  return {
-    deliveryUnits: [],
-    people: [],
-    roleConfig: {
-      deliveryUnit: [...DEFAULT_DELIVERY_UNIT_ROLES],
-      releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
-      squad: [...DEFAULT_SQUAD_ROLES],
-    },
-  };
+  // No data at all — auto-seed with sample data on first run
+  const seed = generateSeedData();
+  saveData(seed);
+  return seed;
+}
+
+export function resetToSampleData(): AppData {
+  const seed = generateSeedData();
+  saveData(seed);
+  return seed;
 }
 
 export function saveData(data: AppData): void {

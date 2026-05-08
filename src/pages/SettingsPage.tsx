@@ -6,8 +6,9 @@ import { Input } from '../components/ui/Input';
 import { useAuth } from '../hooks/useAuth';
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, RefreshCw } from 'lucide-react';
 import type { RoleConfig } from '../types';
+import { ConfirmDialog } from '../components/ui/Modal';
 
 export function SettingsPage() {
   const { isAdmin, createUser } = useAuth();
@@ -16,10 +17,41 @@ export function SettingsPage() {
   return (
     <Layout title="Settings">
       <div className="max-w-xl space-y-6">
+        <SampleDataSection />
         <RoleConfigSection />
         <CreateUserSection createUser={createUser} />
       </div>
     </Layout>
+  );
+}
+
+// ── Sample Data ───────────────────────────────────────────────────────────────
+
+function SampleDataSection() {
+  const { resetToSampleData } = useAppStore();
+  const [confirm, setConfirm] = useState(false);
+
+  return (
+    <Card>
+      <h2 className="font-semibold text-gray-800 mb-1">Sample Data</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Load two pre-built Delivery Units with Release Trains, Squads, and 18 people to explore the application. This will replace all current data.
+      </p>
+      <Button variant="ghost" onClick={() => setConfirm(true)}>
+        <RefreshCw size={13} />
+        Reset to Sample Data
+      </Button>
+
+      {confirm && (
+        <ConfirmDialog
+          title="Reset to Sample Data"
+          message="This will replace all Delivery Units, Release Trains, Squads, and People with sample data. This cannot be undone."
+          confirmLabel="Reset"
+          onConfirm={() => { resetToSampleData(); setConfirm(false); }}
+          onCancel={() => setConfirm(false)}
+        />
+      )}
+    </Card>
   );
 }
 

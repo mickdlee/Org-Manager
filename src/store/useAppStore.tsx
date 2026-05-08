@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig } from '../types';
-import { loadData, saveData } from '../utils/storage';
+import { loadData, saveData, resetToSampleData as storageSeed } from '../utils/storage';
 
 interface AppStoreContextValue {
   data: AppData;
@@ -41,6 +41,7 @@ interface AppStoreContextValue {
   // Role config
   addRole: (layer: keyof RoleConfig, role: string) => void;
   removeRole: (layer: keyof RoleConfig, role: string) => void;
+  resetToSampleData: () => void;
 }
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -374,6 +375,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const resetToSampleData = useCallback(() => {
+    const seed = storageSeed();
+    setData(seed);
+  }, []);
+
   // ── Lookup helpers ──────────────────────────────────────────────────────────
   const getPersonById = useCallback((id: string) => data.people.find((p) => p.id === id), [data]);
   const getDeliveryUnitById = useCallback((id: string) => data.deliveryUnits.find((d) => d.id === id), [data]);
@@ -392,7 +398,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addAssignmentToRT, removeAssignmentFromRT,
         addAssignmentToSquad, removeAssignmentFromSquad,
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
-        addRole, removeRole,
+        addRole, removeRole, resetToSampleData,
       }}
     >
       {children}
