@@ -52,8 +52,9 @@ function FinancialVisibilitySection() {
 // ── Sample Data ───────────────────────────────────────────────────────────────
 
 function SampleDataSection() {
-  const { resetToSampleData } = useAppStore();
-  const [confirm, setConfirm] = useState(false);
+  const { resetToSampleData, resetToLargeSampleData } = useAppStore();
+  const [confirmDefault, setConfirmDefault] = useState(false);
+  const [confirmLarge, setConfirmLarge] = useState(false);
 
   return (
     <Card>
@@ -61,18 +62,34 @@ function SampleDataSection() {
       <p className="text-xs text-gray-500 mb-4">
         Load two pre-built Delivery Units with Release Trains, Squads, and 18 people to explore the application. This will replace all current data.
       </p>
-      <Button variant="ghost" onClick={() => setConfirm(true)}>
-        <RefreshCw size={13} />
-        Reset to Sample Data
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button variant="ghost" onClick={() => setConfirmDefault(true)}>
+          <RefreshCw size={13} />
+          Reset to Sample Data
+        </Button>
+        <Button variant="ghost" onClick={() => setConfirmLarge(true)}>
+          <RefreshCw size={13} />
+          Load Large Sample Data (20 DUs)
+        </Button>
+      </div>
 
-      {confirm && (
+      {confirmDefault && (
         <ConfirmDialog
           title="Reset to Sample Data"
           message="This will replace all Delivery Units, Release Trains, Squads, and People with sample data. This cannot be undone."
           confirmLabel="Reset"
-          onConfirm={() => { resetToSampleData(); setConfirm(false); }}
-          onCancel={() => setConfirm(false)}
+          onConfirm={() => { resetToSampleData(); setConfirmDefault(false); }}
+          onCancel={() => setConfirmDefault(false)}
+        />
+      )}
+
+      {confirmLarge && (
+        <ConfirmDialog
+          title="Load Large Sample Data"
+          message="This will replace all current data with a large generated data set: 20 Delivery Units, each with 1-5 Release Trains and each Release Train with 5-8 Squads."
+          confirmLabel="Load"
+          onConfirm={() => { resetToLargeSampleData(); setConfirmLarge(false); }}
+          onCancel={() => setConfirmLarge(false)}
         />
       )}
     </Card>

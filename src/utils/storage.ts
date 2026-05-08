@@ -1,6 +1,6 @@
 import type { AppData, AppUser, Session } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
-import { generateSeedData } from './seed';
+import { generateLargeSeedData, generateSeedData } from './seed';
 
 const DATA_KEY = 'org_manager_data';
 const USERS_KEY = 'org_manager_users';
@@ -49,6 +49,26 @@ export function loadData(): AppData {
         return { ...du, type: inferredType };
       });
 
+      // Migrate: seed assignment-level offboarding flag if absent
+      const withAssignmentFlags = (assignments: { isScheduledOffboarding?: boolean }[]) =>
+        assignments.map((a) => ({
+          ...a,
+          isScheduledOffboarding: Boolean(a.isScheduledOffboarding),
+        }));
+
+      parsed.deliveryUnits = parsed.deliveryUnits.map((du) => ({
+        ...du,
+        assignments: withAssignmentFlags(du.assignments),
+        releaseTrains: du.releaseTrains.map((rt) => ({
+          ...rt,
+          assignments: withAssignmentFlags(rt.assignments),
+          squads: rt.squads.map((sq) => ({
+            ...sq,
+            assignments: withAssignmentFlags(sq.assignments),
+          })),
+        })),
+      }));
+
       // Migrate: seed squadTemplates if absent
       if (!parsed.squadTemplates) {
         parsed.squadTemplates = [];
@@ -74,6 +94,12 @@ export function loadData(): AppData {
 
 export function resetToSampleData(): AppData {
   const seed = generateSeedData();
+  saveData(seed);
+  return seed;
+}
+
+export function resetToLargeSampleData(): AppData {
+  const seed = generateLargeSeedData();
   saveData(seed);
   return seed;
 }

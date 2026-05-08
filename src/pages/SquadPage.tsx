@@ -227,7 +227,25 @@ export function SquadPage() {
                           )}
                         </div>
                       )}
-                      <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                        {a.isScheduledOffboarding && <Badge color="red">Offboarding</Badge>}
+                      </div>
+                      {isAdmin && (
+                        <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(a.isScheduledOffboarding)}
+                            onChange={(e) =>
+                              updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
+                                isScheduledOffboarding: e.target.checked,
+                              })
+                            }
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          Scheduled offboarding
+                        </label>
+                      )}
                       {/* Allocation slider */}
                       <div className="mt-3">
                         <div className="flex items-center justify-between mb-1">

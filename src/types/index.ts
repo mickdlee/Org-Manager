@@ -51,6 +51,7 @@ export interface Assignment {
   personId: string;
   role: AnyRole;
   allocationPercentage?: number;
+  isScheduledOffboarding?: boolean;
 }
 
 // Onboarding types

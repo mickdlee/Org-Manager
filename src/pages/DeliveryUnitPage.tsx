@@ -15,7 +15,7 @@ import type { AnyRole } from '../types';
 
 export function DeliveryUnitPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, addReleaseTrain, updateReleaseTrain, deleteReleaseTrain, addAssignmentToDU, removeAssignmentFromDU } = useAppStore();
+  const { data, addReleaseTrain, updateReleaseTrain, deleteReleaseTrain, addAssignmentToDU, removeAssignmentFromDU, updateDUAssignment } = useAppStore();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -75,6 +75,7 @@ export function DeliveryUnitPage() {
           showFinancials={showFinancials}
           onAdd={(a) => addAssignmentToDU(du.id, a)}
           onRemove={(personId, role) => removeAssignmentFromDU(du.id, personId, role)}
+          onUpdate={(personId, role, patch) => updateDUAssignment(du.id, personId, role, patch)}
         />
       </Card>
 

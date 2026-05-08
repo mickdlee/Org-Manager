@@ -15,7 +15,7 @@ import type { AnyRole } from '../types';
 
 export function ReleaseTrainPage() {
   const { duId, rtId } = useParams<{ duId: string; rtId: string }>();
-  const { data, addSquad, updateSquad, deleteSquad, addAssignmentToRT, removeAssignmentFromRT } = useAppStore();
+  const { data, addSquad, updateSquad, deleteSquad, addAssignmentToRT, removeAssignmentFromRT, updateRTAssignment } = useAppStore();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -67,6 +67,7 @@ export function ReleaseTrainPage() {
           showFinancials={showFinancials}
           onAdd={(a) => addAssignmentToRT(du.id, rt.id, a)}
           onRemove={(personId, role) => removeAssignmentFromRT(du.id, rt.id, personId, role)}
+          onUpdate={(personId, role, patch) => updateRTAssignment(du.id, rt.id, personId, role, patch)}
         />
       </Card>
 
@@ -90,7 +91,13 @@ export function ReleaseTrainPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {rt.squads.map((sq) => (
+          {rt.squads.map((sq) => {
+            const emptyRoles = sq.onboarding?.openPositions.length ?? 0;
+            const pipeline = sq.onboarding?.candidates.length ?? 0;
+            const pendingOffboarding = sq.onboarding?.pendingOffboarding ?? 0;
+            const avgRampUpDays = sq.onboarding?.avgRampUpDays ?? 0;
+            const hiringPriority = sq.onboarding?.hiringPriority ?? 'Medium';
+            return (
             <Card key={sq.id} className="hover:border-gray-300 transition-colors">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -108,6 +115,31 @@ export function ReleaseTrainPage() {
               <div className="text-xs text-gray-400 mb-3 flex items-center gap-1">
                 <Users size={11} />{sq.assignments.length} member{sq.assignments.length !== 1 ? 's' : ''}
               </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5">
+                  <p className="text-gray-400">Members</p>
+                  <p className="font-semibold text-gray-700">{sq.assignments.length}</p>
+                </div>
+                <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5">
+                  <p className="text-amber-700">Empty Roles</p>
+                  <p className="font-semibold text-amber-800">{emptyRoles}</p>
+                </div>
+                <div className="rounded border border-blue-200 bg-blue-50 px-2 py-1.5">
+                  <p className="text-blue-700">Pipeline</p>
+                  <p className="font-semibold text-blue-800">{pipeline}</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5">
+                  <p className="text-gray-400">Offboarding</p>
+                  <p className="font-semibold text-gray-700">{pendingOffboarding}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-3">
+                <span className="font-medium text-gray-700">Priority:</span> {hiringPriority}
+                &nbsp;·&nbsp;
+                <span className="font-medium text-gray-700">Ramp-up:</span> {avgRampUpDays} days
+              </p>
               {showFinancials && (() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = squadDailyCost(sq, getPerson);
@@ -121,7 +153,7 @@ export function ReleaseTrainPage() {
                 View Details
               </Button>
             </Card>
-          ))}
+          );})}
         </div>
       )}
 

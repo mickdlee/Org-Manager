@@ -14,6 +14,7 @@ interface MemberListProps {
   showFinancials?: boolean;
   onAdd: (assignment: Assignment) => void;
   onRemove: (personId: string, role: AnyRole) => void;
+  onUpdate?: (personId: string, role: AnyRole, patch: Partial<Assignment>) => void;
 }
 
 const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'> = {
@@ -45,7 +46,7 @@ function initials(name: string) {
     .join('') || '?';
 }
 
-export function MemberList({ assignments, people, availableRoles, isAdmin, showFinancials = true, onAdd, onRemove }: MemberListProps) {
+export function MemberList({ assignments, people, availableRoles, isAdmin, showFinancials = true, onAdd, onRemove, onUpdate }: MemberListProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
 
@@ -104,7 +105,23 @@ export function MemberList({ assignments, people, availableRoles, isAdmin, showF
                       {person?.dayRate ? <span>${person.dayRate}/day</span> : <span>—</span>}
                     </div>
                   )}
-                  <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                    {a.isScheduledOffboarding && <Badge color="red">Offboarding</Badge>}
+                  </div>
+                  {isAdmin && onUpdate && (
+                    <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(a.isScheduledOffboarding)}
+                        onChange={(e) =>
+                          onUpdate(a.personId, a.role, { isScheduledOffboarding: e.target.checked })
+                        }
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      Scheduled offboarding
+                    </label>
+                  )}
                 </div>
 
                 {isAdmin && (
@@ -156,13 +173,14 @@ interface AddMemberModalProps {
 function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, onClose }: AddMemberModalProps) {
   const [personId, setPersonId] = useState('');
   const [role, setRole] = useState<AnyRole>(availableRoles[0]);
+  const [isScheduledOffboarding, setIsScheduledOffboarding] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
     if (!personId) { setError('Please select a person.'); return; }
     const duplicate = existingAssignments.find((a) => a.personId === personId && a.role === role);
     if (duplicate) { setError('This person already holds this role here.'); return; }
-    onAdd({ personId, role });
+    onAdd({ personId, role, isScheduledOffboarding });
   };
 
   return (
@@ -202,6 +220,15 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
             ))}
           </select>
         </div>
+        <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isScheduledOffboarding}
+            onChange={(e) => setIsScheduledOffboarding(e.target.checked)}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          Scheduled for offboarding
+        </label>
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
     </Modal>

@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate } from '../types';
-import { loadData, saveData, resetToSampleData as storageSeed } from '../utils/storage';
+import { loadData, saveData, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
 
 interface AppStoreContextValue {
   data: AppData;
@@ -29,8 +29,10 @@ interface AppStoreContextValue {
   // Assignments
   addAssignmentToDU: (duId: string, assignment: Assignment) => void;
   removeAssignmentFromDU: (duId: string, personId: string, role: string) => void;
+  updateDUAssignment: (duId: string, personId: string, role: string, patch: Partial<Assignment>) => void;
   addAssignmentToRT: (duId: string, rtId: string, assignment: Assignment) => void;
   removeAssignmentFromRT: (duId: string, rtId: string, personId: string, role: string) => void;
+  updateRTAssignment: (duId: string, rtId: string, personId: string, role: string, patch: Partial<Assignment>) => void;
   addAssignmentToSquad: (duId: string, rtId: string, sqId: string, assignment: Assignment) => void;
   removeAssignmentFromSquad: (duId: string, rtId: string, sqId: string, personId: string, role: string) => void;
   updateSquadAssignment: (duId: string, rtId: string, sqId: string, personId: string, role: string, patch: Partial<Assignment>) => void;
@@ -43,6 +45,7 @@ interface AppStoreContextValue {
   addRole: (layer: keyof RoleConfig, role: string) => void;
   removeRole: (layer: keyof RoleConfig, role: string) => void;
   resetToSampleData: () => void;
+  resetToLargeSampleData: () => void;
   // Onboarding
   updateSquadOnboarding: (duId: string, rtId: string, sqId: string, onboarding: SquadOnboarding) => void;
   updateDeliveryUnitOnboarding: (duId: string, onboarding: DeliveryUnitOnboarding) => void;
@@ -268,6 +271,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateDUAssignment = useCallback((duId: string, personId: string, role: string, patch: Partial<Assignment>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                assignments: du.assignments.map((a) =>
+                  a.personId === personId && a.role === role ? { ...a, ...patch } : a,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   // ── Assignments – RT ────────────────────────────────────────────────────────
   const addAssignmentToRT = useCallback((duId: string, rtId: string, assignment: Assignment) => {
     setData((prev) => {
@@ -300,6 +323,33 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 releaseTrains: du.releaseTrains.map((rt) =>
                   rt.id === rtId
                     ? { ...rt, assignments: rt.assignments.filter((a) => !(a.personId === personId && a.role === role)) }
+                    : rt,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const updateRTAssignment = useCallback((duId: string, rtId: string, personId: string, role: string, patch: Partial<Assignment>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                releaseTrains: du.releaseTrains.map((rt) =>
+                  rt.id === rtId
+                    ? {
+                        ...rt,
+                        assignments: rt.assignments.map((a) =>
+                          a.personId === personId && a.role === role ? { ...a, ...patch } : a,
+                        ),
+                      }
                     : rt,
                 ),
               }
@@ -422,6 +472,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const resetToSampleData = useCallback(() => {
     const seed = storageSeed();
+    setData(seed);
+  }, []);
+
+  const resetToLargeSampleData = useCallback(() => {
+    const seed = storageLargeSeed();
     setData(seed);
   }, []);
 
@@ -551,11 +606,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit,
         addReleaseTrain, updateReleaseTrain, deleteReleaseTrain,
         addSquad, updateSquad, deleteSquad,
-        addAssignmentToDU, removeAssignmentFromDU,
-        addAssignmentToRT, removeAssignmentFromRT,
+        addAssignmentToDU, removeAssignmentFromDU, updateDUAssignment,
+        addAssignmentToRT, removeAssignmentFromRT, updateRTAssignment,
         addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment,
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
         addRole, removeRole, resetToSampleData, updateSquadOnboarding, updateDeliveryUnitOnboarding,
+        resetToLargeSampleData,
         addSquadTemplate, updateSquadTemplate, deleteSquadTemplate, applySquadTemplate,
         setShowFinancials,
       }}

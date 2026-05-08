@@ -24,11 +24,10 @@ export function generateSeedData(): AppData {
     { id: 'p18', name: 'Kofi Acheampong',  email: 'kofi.acheampong@example.com', photoUrl: 'https://i.pravatar.cc/160?img=18', dayRate: 1200 },
   ];
 
-  // ── Delivery Unit 1: Platform Engineering ───────────────────────────────────
+  // ── Delivery Unit 1: Retail Banking Operations ─────────────────────────────
   const du1 = {
     id: 'du01',
-    name: 'Platform Engineering',
-    type: 'Platform' as const,
+    name: 'Retail Banking Operations',
     type: 'Customer Journey' as const,
     description: 'Owns the internal developer platform, infrastructure, and shared services that underpin all product delivery.',
     assignments: [
@@ -39,7 +38,7 @@ export function generateSeedData(): AppData {
     releaseTrains: [
       {
         id: 'rt01',
-        name: 'Core Infrastructure ART',
+        name: 'Core Banking ART',
         description: 'Responsible for cloud infrastructure, networking, and security foundations.',
         assignments: [
           { personId: 'p04', role: 'Release Train Engineer' },
@@ -48,7 +47,7 @@ export function generateSeedData(): AppData {
         squads: [
           {
             id: 'sq01',
-            name: 'Cloud Operations',
+            name: 'Account Services',
             description: 'Manages cloud provisioning, cost optimisation, and reliability.',
             assignments: [
               { personId: 'p06', role: 'Squad Member' },
@@ -60,20 +59,15 @@ export function generateSeedData(): AppData {
               avgRampUpDays: 12,
               candidates: [
                 { id: 'c01', name: 'Alice Thompson', stage: 'Recruitment' },
-                { id: 'c02', name: 'Bob Chen',       stage: 'Recruitment' },
-                { id: 'c03', name: 'Clara Marsh',    stage: 'Pre-boarding' },
-                { id: 'c04', name: 'Dan Rivera',     stage: 'Ramp-up' },
-                { id: 'c05', name: 'Eve Okonkwo',    stage: 'Ramp-up' },
               ],
               openPositions: [
                 { id: 'op01', title: 'Senior Cloud Engineer',      priority: 'High' },
-                { id: 'op02', title: 'Site Reliability Engineer',  priority: 'Medium' },
               ],
             },
           },
           {
             id: 'sq02',
-            name: 'Security & Compliance',
+            name: 'Fraud Controls',
             description: 'Oversees platform security controls, vulnerability management, and audit readiness.',
             assignments: [
               { personId: 'p08', role: 'Squad Member' },
@@ -82,7 +76,7 @@ export function generateSeedData(): AppData {
           },
           {
             id: 'sq03',
-            name: 'Networking',
+            name: 'Payments Routing',
             description: 'Owns network topology, DNS, load balancing, and connectivity between services.',
             assignments: [
               { personId: 'p10', role: 'Squad Member' },
@@ -92,7 +86,7 @@ export function generateSeedData(): AppData {
       },
       {
         id: 'rt02',
-        name: 'Developer Experience ART',
+        name: 'Digital Channels ART',
         description: 'Builds tooling and workflows that improve engineering velocity across all product teams.',
         assignments: [
           { personId: 'p11', role: 'Release Train Engineer' },
@@ -101,7 +95,7 @@ export function generateSeedData(): AppData {
         squads: [
           {
             id: 'sq04',
-            name: 'CI/CD Platform',
+            name: 'Card Processing',
             description: 'Maintains and evolves the continuous integration and deployment pipeline infrastructure.',
             assignments: [
               { personId: 'p13', role: 'Squad Member' },
@@ -110,7 +104,7 @@ export function generateSeedData(): AppData {
           },
           {
             id: 'sq05',
-            name: 'Developer Tooling',
+            name: 'Ledger & Reconciliation',
             description: 'Owns internal CLIs, SDKs, code generation tools, and local development environments.',
             assignments: [
               { personId: 'p15', role: 'Squad Member' },
@@ -121,16 +115,17 @@ export function generateSeedData(): AppData {
     ],
     onboarding: {
       overallHealthStatus: 'Healthy',
-      totalNewHires: 8,
-      totalOpenRoles: 12,
+      totalNewHires: 1,
+      totalOpenRoles: 1,
       totalPendingOffboarding: 2,
     },
   };
 
-  // ── Delivery Unit 2: Customer Products ─────────────────────────────────────
+  // ── Delivery Unit 2: Customer Banking ──────────────────────────────────────
   const du2 = {
     id: 'du02',
-    name: 'Customer Products',
+    name: 'Customer Banking',
+    type: 'Customer Journey' as const,
     description: 'Delivers the end-user facing product suite including payments, onboarding, and the customer portal.',
     assignments: [
       { personId: 'p16', role: 'Delivery Unit Owner' },
@@ -160,14 +155,8 @@ export function generateSeedData(): AppData {
               hiringPriority: 'Medium',
               pendingOffboarding: 0,
               avgRampUpDays: 18,
-              candidates: [
-                { id: 'c06', name: 'Fiona Blake',   stage: 'Recruitment' },
-                { id: 'c07', name: 'George Addo',   stage: 'Pre-boarding' },
-                { id: 'c08', name: 'Hana Sato',     stage: 'Ramp-up' },
-              ],
-              openPositions: [
-                { id: 'op03', title: 'Backend Engineer – Payments', priority: 'Medium' },
-              ],
+              candidates: [],
+              openPositions: [],
             },
           },
           {
@@ -183,7 +172,7 @@ export function generateSeedData(): AppData {
       },
       {
         id: 'rt04',
-        name: 'Customer Experience ART',
+        name: 'Lending & Onboarding ART',
         description: 'Owns the customer portal, onboarding flows, and all user-facing web and mobile surfaces.',
         assignments: [
           { personId: 'p14', role: 'Release Train Engineer' },
@@ -192,7 +181,7 @@ export function generateSeedData(): AppData {
         squads: [
           {
             id: 'sq08',
-            name: 'Web UI',
+            name: 'Mortgage Journey',
             description: 'Builds and maintains the customer-facing web application and design system.',
             assignments: [
               { personId: 'p04', role: 'Squad Member' },
@@ -201,7 +190,7 @@ export function generateSeedData(): AppData {
           },
           {
             id: 'sq09',
-            name: 'Mobile Apps',
+            name: 'Mobile Banking',
             description: 'Develops the iOS and Android customer applications.',
             assignments: [
               { personId: 'p07', role: 'Squad Member' },
@@ -210,7 +199,7 @@ export function generateSeedData(): AppData {
           },
           {
             id: 'sq10',
-            name: 'Onboarding',
+            name: 'KYC & Onboarding',
             description: 'Owns the new customer registration, KYC, and account activation journeys.',
             assignments: [
               { personId: 'p17', role: 'Squad Member' },
@@ -222,8 +211,8 @@ export function generateSeedData(): AppData {
     ],
     onboarding: {
       overallHealthStatus: 'Attention',
-      totalNewHires: 12,
-      totalOpenRoles: 18,
+      totalNewHires: 0,
+      totalOpenRoles: 0,
       totalPendingOffboarding: 1,
     },
   };
@@ -231,6 +220,203 @@ export function generateSeedData(): AppData {
   return {
     people,
     deliveryUnits: [du1, du2],
+    roleConfig: {
+      deliveryUnit: [...DEFAULT_DELIVERY_UNIT_ROLES],
+      releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
+      squad: [...DEFAULT_SQUAD_ROLES],
+    },
+    squadTemplates: [],
+    uiSettings: {
+      showFinancials: true,
+    },
+  };
+}
+
+function randInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pick<T>(arr: T[]): T {
+  return arr[randInt(0, arr.length - 1)];
+}
+
+function pickAllocationPercentage(): number {
+  const roll = Math.random();
+  if (roll < 0.8) return 100;
+  if (roll < 0.95) return 50;
+  return 20;
+}
+
+export function generateLargeSeedData(): AppData {
+  const firstNames = ['Ava', 'Noah', 'Liam', 'Emma', 'Olivia', 'Mason', 'Lucas', 'Sophia', 'Mia', 'Ethan', 'Zoe', 'Ivy', 'Leo', 'Ravi', 'Amira', 'Hana', 'Nina', 'Jonas', 'Kofi', 'Priya'];
+  const lastNames = ['Walker', 'Nguyen', 'Patel', 'Smith', 'Singh', 'Tanaka', 'Garcia', 'Rossi', 'Mensah', 'Ivanov', 'Larsson', 'Miller', 'Khan', 'Dubois', 'Berg', 'Chen', 'Nair', 'Kapoor', 'Lopez', 'Yamada'];
+  const duPrefixes = ['Retail Banking', 'Commercial Banking', 'Cards & Payments', 'Deposits', 'Lending', 'Digital Banking', 'Fraud & Risk', 'Treasury Services', 'Customer Onboarding', 'Core Banking'];
+  const rtNames = ['Core Banking ART', 'Cards ART', 'Payments ART', 'Lending ART', 'Risk ART', 'Customer Channels ART'];
+  const squadPrefixes = ['Accounts', 'Cards', 'Payments', 'Lending', 'KYC', 'Fraud', 'Collections', 'Treasury', 'Mobile Banking', 'Digital Channels'];
+  const squadSuffixes = ['Team', 'Squad', 'Cell', 'Pod'];
+  const onboardingActivityRate = 0.08;
+  const openRoleRate = 0.08;
+
+  const peopleCount = 300;
+  let extraPeopleCount = 0;
+  const people = Array.from({ length: peopleCount }, (_, i) => {
+    const id = `p${String(i + 1).padStart(3, '0')}`;
+    const first = pick(firstNames);
+    const last = pick(lastNames);
+    const name = `${first} ${last}`;
+    return {
+      id,
+      name,
+      email: `${first.toLowerCase()}.${last.toLowerCase()}${i + 1}@example.com`,
+      photoUrl: `https://i.pravatar.cc/160?img=${(i % 70) + 1}`,
+      dayRate: randInt(850, 1650),
+    };
+  });
+
+  const remainingSquadAllocation = new Map<string, number>(
+    people.map((p) => [p.id, 100]),
+  );
+
+  const addExtraPerson = () => {
+    const idx = peopleCount + extraPeopleCount + 1;
+    extraPeopleCount += 1;
+    const id = `p${String(idx).padStart(3, '0')}`;
+    const first = pick(firstNames);
+    const last = pick(lastNames);
+    const name = `${first} ${last}`;
+    const person = {
+      id,
+      name,
+      email: `${first.toLowerCase()}.${last.toLowerCase()}${idx}@example.com`,
+      photoUrl: `https://i.pravatar.cc/160?img=${((idx - 1) % 70) + 1}`,
+      dayRate: randInt(850, 1650),
+    };
+    people.push(person);
+    remainingSquadAllocation.set(id, 100);
+    return id;
+  };
+
+  const allocateSquadPerson = (allocation: number, usedInSquad: Set<string>) => {
+    for (const p of people) {
+      if (usedInSquad.has(p.id)) continue;
+      const remaining = remainingSquadAllocation.get(p.id) ?? 0;
+      if (remaining >= allocation) {
+        remainingSquadAllocation.set(p.id, remaining - allocation);
+        usedInSquad.add(p.id);
+        return p.id;
+      }
+    }
+
+    const id = addExtraPerson();
+    remainingSquadAllocation.set(id, 100 - allocation);
+    usedInSquad.add(id);
+    return id;
+  };
+
+  let personCursor = 0;
+  const nextPersonId = () => {
+    const id = people[personCursor % people.length].id;
+    personCursor += 1;
+    return id;
+  };
+
+  let rtCounter = 1;
+  let sqCounter = 1;
+  let candidateCounter = 1;
+  let openPositionCounter = 1;
+
+  const deliveryUnits = Array.from({ length: 20 }, (_, i) => {
+    const duId = `du${String(i + 1).padStart(2, '0')}`;
+    const duType = pick(['Customer Journey', 'Platform', 'Supporting'] as const);
+    const duName = `${pick(duPrefixes)} ${i + 1}`;
+    const rtCount = randInt(1, 5);
+
+    const releaseTrains = Array.from({ length: rtCount }, (_, rtIdx) => {
+      const rtId = `rt${String(rtCounter++).padStart(3, '0')}`;
+      const squadCount = randInt(5, 8);
+      const rtName = `${pick(rtNames)} ${rtIdx + 1}`;
+
+      const squads = Array.from({ length: squadCount }, (_, sqIdx) => {
+        const sqId = `sq${String(sqCounter++).padStart(4, '0')}`;
+        const squadName = `${pick(squadPrefixes)} ${pick(squadSuffixes)} ${sqIdx + 1}`;
+
+        const assignmentCount = randInt(2, 5);
+        const usedInSquad = new Set<string>();
+        const assignments = Array.from({ length: assignmentCount }, () => {
+          const allocationPercentage = pickAllocationPercentage();
+          const personId = allocateSquadPerson(allocationPercentage, usedInSquad);
+          return {
+            personId,
+            role: 'Squad Member',
+            allocationPercentage,
+          };
+        });
+
+        const candidateCount = Math.random() < onboardingActivityRate ? 1 : 0;
+        const openRolesCount = Math.random() < openRoleRate ? 1 : 0;
+
+        return {
+          id: sqId,
+          name: squadName,
+          description: `${squadName} delivery squad for ${duName}.`,
+          assignments,
+          onboarding: {
+            hiringPriority: pick(['Low', 'Medium', 'High'] as const),
+            pendingOffboarding: randInt(0, 2),
+            avgRampUpDays: randInt(8, 25),
+            candidates: Array.from({ length: candidateCount }, () => ({
+              id: `c${String(candidateCounter++).padStart(4, '0')}`,
+              name: `${pick(firstNames)} ${pick(lastNames)}`,
+              stage: pick(['Recruitment', 'Pre-boarding', 'Ramp-up'] as const),
+            })),
+            openPositions: Array.from({ length: openRolesCount }, () => ({
+              id: `op${String(openPositionCounter++).padStart(4, '0')}`,
+              title: pick([...DEFAULT_SQUAD_ROLES]),
+              priority: pick(['Low', 'Medium', 'High'] as const),
+              allocationPercentage: pickAllocationPercentage(),
+            })),
+          },
+        };
+      });
+
+      return {
+        id: rtId,
+        name: rtName,
+        description: `${rtName} coordinating squads in ${duName}.`,
+        assignments: [
+          { personId: nextPersonId(), role: 'Release Train Engineer' },
+          { personId: nextPersonId(), role: 'Product Owner' },
+        ],
+        squads,
+      };
+    });
+
+    return {
+      id: duId,
+      name: duName,
+      type: duType,
+      description: `${duName} oversees product and platform outcomes across multiple release trains.`,
+      assignments: [
+        { personId: nextPersonId(), role: 'Delivery Unit Owner' },
+        { personId: nextPersonId(), role: 'Chief Product Owner' },
+        { personId: nextPersonId(), role: 'Delivery Lead' },
+      ],
+      releaseTrains,
+      onboarding: {
+        overallHealthStatus: pick(['Healthy', 'Attention', 'Critical'] as const),
+        totalNewHires: randInt(3, 35),
+        totalOpenRoles: releaseTrains.reduce(
+          (sum, rt) => sum + rt.squads.reduce((sqSum, sq) => sqSum + (sq.onboarding?.openPositions.length ?? 0), 0),
+          0,
+        ),
+        totalPendingOffboarding: randInt(0, 5),
+      },
+    };
+  });
+
+  return {
+    people,
+    deliveryUnits,
     roleConfig: {
       deliveryUnit: [...DEFAULT_DELIVERY_UNIT_ROLES],
       releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
