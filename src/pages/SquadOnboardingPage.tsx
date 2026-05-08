@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import {
   Users, UserMinus, Zap, Briefcase,
-  ArrowRight, Plus, Trash2, CheckCircle2, Circle, Clock,
+  ArrowRight, Plus, Trash2,
   Building2, Train, ChevronRight, Flag, Users2,
 } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
@@ -14,7 +14,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import type {
   SquadOnboarding, OnboardingCandidate, OnboardingStage,
-  OpenPosition, HiringPriority, SprintTask, SprintTaskStatus,
+  OpenPosition, HiringPriority,
 } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -35,21 +35,13 @@ const PRIORITY_COLORS: Record<HiringPriority, 'amber' | 'blue' | 'gray'> = {
   High: 'amber', Medium: 'blue', Low: 'gray',
 };
 
-const STATUS_META: Record<SprintTaskStatus, { icon: React.ReactNode; color: string; label: string }> = {
-  'To Do':      { icon: <Circle size={13} />,       color: 'text-gray-400',   label: 'To Do' },
-  'In Progress':{ icon: <Clock size={13} />,        color: 'text-blue-500',   label: 'In Progress' },
-  'Done':       { icon: <CheckCircle2 size={13} />, color: 'text-emerald-500', label: 'Done' },
-};
-
 function emptyOnboarding(): SquadOnboarding {
   return {
-    sprintName: 'S-1',
     hiringPriority: 'Medium',
     pendingOffboarding: 0,
     avgRampUpDays: 14,
     candidates: [],
     openPositions: [],
-    sprintTasks: [],
   };
 }
 
@@ -163,73 +155,6 @@ export function SquadOnboardingPage() {
             </div>
           </section>
 
-          {/* Current Sprint */}
-          <section className="bg-white border border-gray-200 rounded-lg p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
-                  Current Sprint {ob.sprintName ? `(${ob.sprintName})` : ''}
-                </h2>
-              </div>
-              {isAdmin && (
-                <AddTaskButton
-                  people={data.people}
-                  onAdd={(t) => save({ ...ob, sprintTasks: [...ob.sprintTasks, t] })}
-                />
-              )}
-            </div>
-
-            {ob.sprintTasks.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No sprint tasks yet.</p>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {ob.sprintTasks.map((task) => {
-                  const person = task.assigneePersonId ? data.people.find((p) => p.id === task.assigneePersonId) : null;
-                  const sm = STATUS_META[task.status];
-                  return (
-                    <div key={task.id} className="flex items-center gap-3 py-3">
-                      {/* Status toggle */}
-                      <button
-                        disabled={!isAdmin}
-                        onClick={() => {
-                          const cycle: SprintTaskStatus[] = ['To Do', 'In Progress', 'Done'];
-                          const next = cycle[(cycle.indexOf(task.status) + 1) % cycle.length];
-                          save({ ...ob, sprintTasks: ob.sprintTasks.map((t) => t.id === task.id ? { ...t, status: next } : t) });
-                        }}
-                        className={`shrink-0 ${sm.color} ${isAdmin ? 'hover:opacity-70 cursor-pointer' : 'cursor-default'}`}
-                        title={isAdmin ? 'Click to advance status' : task.status}
-                      >
-                        {sm.icon}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${task.status === 'Done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                          {task.title}
-                        </p>
-                        {person && (
-                          <p className="text-xs text-gray-400 truncate">Assigned to: {person.name}</p>
-                        )}
-                      </div>
-
-                      <Badge color={task.status === 'Done' ? 'green' : task.status === 'In Progress' ? 'blue' : 'gray'}>
-                        {sm.label}
-                      </Badge>
-
-                      {isAdmin && (
-                        <button
-                          onClick={() => save({ ...ob, sprintTasks: ob.sprintTasks.filter((t) => t.id !== task.id) })}
-                          className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
-                          title="Remove task"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
         </div>
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
@@ -327,21 +252,11 @@ export function SquadOnboardingPage() {
             )}
           </div>
 
-          {/* Sprint settings (admin) */}
+          {/* Onboarding settings (admin) */}
           {isAdmin && (
             <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Sprint Settings</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Onboarding Settings</h3>
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Sprint Name</label>
-                  <input
-                    type="text"
-                    value={ob.sprintName ?? ''}
-                    onChange={(e) => save({ ...ob, sprintName: e.target.value })}
-                    className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
-                    placeholder="e.g. S-42"
-                  />
-                </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Avg Ramp-up (days)</label>
                   <input
@@ -473,76 +388,6 @@ function AddCandidateButton({ onAdd }: { onAdd: (c: OnboardingCandidate) => void
             {err && <p className="text-xs text-red-500">{err}</p>}
             <div className="flex gap-2 pt-1">
               <Button variant="secondary" onClick={submit}>Add</Button>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </>
-  );
-}
-
-function AddTaskButton({ people, onAdd }: {
-  people: { id: string; name: string }[];
-  onAdd: (t: SprintTask) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
-  const [status, setStatus] = useState<SprintTaskStatus>('To Do');
-  const [err, setErr] = useState('');
-
-  const submit = () => {
-    if (!title.trim()) { setErr('Title is required.'); return; }
-    onAdd({ id: uid(), title: title.trim(), assigneePersonId: assigneeId || undefined, status });
-    setTitle(''); setAssigneeId(''); setStatus('To Do'); setErr(''); setOpen(false);
-  };
-
-  return (
-    <>
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-        <Plus size={13} /> Add Task
-      </Button>
-      {open && (
-        <Modal title="Add Sprint Task" onClose={() => setOpen(false)}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Title</label>
-              <input
-                autoFocus
-                value={title}
-                onChange={(e) => { setTitle(e.target.value); setErr(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                placeholder="Task description"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Assignee (optional)</label>
-              <select
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-              >
-                <option value="">— Unassigned —</option>
-                {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as SprintTaskStatus)}
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-              >
-                <option>To Do</option>
-                <option>In Progress</option>
-                <option>Done</option>
-              </select>
-            </div>
-            {err && <p className="text-xs text-red-500">{err}</p>}
-            <div className="flex gap-2 pt-1">
-              <Button variant="secondary" onClick={submit}>Add Task</Button>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
             </div>
           </div>

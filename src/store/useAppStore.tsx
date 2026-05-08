@@ -510,7 +510,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 ...rt,
                 squads: rt.squads.map((sq) => {
                   if (sq.id !== sqId) return sq;
-                  const existing = sq.onboarding ?? { candidates: [], openPositions: [], sprintTasks: [] };
+                  const existing = sq.onboarding ?? { candidates: [], openPositions: [] };
                   return { ...sq, onboarding: { ...existing, openPositions: [...existing.openPositions, ...newPositions] } };
                 }),
               }

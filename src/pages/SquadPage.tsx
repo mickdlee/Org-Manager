@@ -66,13 +66,11 @@ export function SquadPage() {
 
   const getPersonName = (id: string) => data.people.find((p) => p.id === id)?.name ?? 'Unknown';
   const onboarding = sq.onboarding ?? {
-    sprintName: '',
     hiringPriority: 'Medium' as const,
     pendingOffboarding: 0,
     avgRampUpDays: 14,
     candidates: [],
     openPositions: [],
-    sprintTasks: [],
   };
 
   // Role breakdown for sidebar

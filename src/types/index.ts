@@ -55,7 +55,6 @@ export interface Assignment {
 
 // Onboarding types
 export type OnboardingStage = 'Recruitment' | 'Pre-boarding' | 'Ramp-up';
-export type SprintTaskStatus = 'To Do' | 'In Progress' | 'Done';
 export type HiringPriority = 'Low' | 'Medium' | 'High';
 
 export interface OnboardingCandidate {
@@ -71,21 +70,12 @@ export interface OpenPosition {
   allocationPercentage?: number;
 }
 
-export interface SprintTask {
-  id: string;
-  title: string;
-  assigneePersonId?: string;
-  status: SprintTaskStatus;
-}
-
 export interface SquadOnboarding {
-  sprintName?: string;
   hiringPriority?: HiringPriority;
   pendingOffboarding?: number;
   avgRampUpDays?: number;
   candidates: OnboardingCandidate[];
   openPositions: OpenPosition[];
-  sprintTasks: SprintTask[];
 }
 
 export interface DeliveryUnitOnboarding {

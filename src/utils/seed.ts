@@ -55,7 +55,6 @@ export function generateSeedData(): AppData {
               { personId: 'p07', role: 'Squad Member' },
             ],
             onboarding: {
-              sprintName: 'S-42',
               hiringPriority: 'High',
               pendingOffboarding: 1,
               avgRampUpDays: 12,
@@ -69,11 +68,6 @@ export function generateSeedData(): AppData {
               openPositions: [
                 { id: 'op01', title: 'Senior Cloud Engineer',      priority: 'High' },
                 { id: 'op02', title: 'Site Reliability Engineer',  priority: 'Medium' },
-              ],
-              sprintTasks: [
-                { id: 'st01', title: 'Real-time S3 Ingestion Hook',   assigneePersonId: 'p06', status: 'In Progress' },
-                { id: 'st02', title: 'Schema Registry Integration',    assigneePersonId: 'p07', status: 'To Do' },
-                { id: 'st03', title: 'Cost Dashboard v2',                               status: 'To Do' },
               ],
             },
           },
@@ -163,7 +157,6 @@ export function generateSeedData(): AppData {
               { personId: 'p11', role: 'Squad Member' },
             ],
             onboarding: {
-              sprintName: 'S-17',
               hiringPriority: 'Medium',
               pendingOffboarding: 0,
               avgRampUpDays: 18,
@@ -174,12 +167,6 @@ export function generateSeedData(): AppData {
               ],
               openPositions: [
                 { id: 'op03', title: 'Backend Engineer – Payments', priority: 'Medium' },
-              ],
-              sprintTasks: [
-                { id: 'st04', title: 'PCI-DSS Token Vault Migration',   assigneePersonId: 'p09', status: 'In Progress' },
-                { id: 'st05', title: 'Refund Workflow Refactor',         assigneePersonId: 'p10', status: 'In Progress' },
-                { id: 'st06', title: 'Gateway Timeout Alerts',           assigneePersonId: 'p11', status: 'Done' },
-                { id: 'st07', title: 'Batch Reconciliation Performance',                          status: 'To Do' },
               ],
             },
           },
