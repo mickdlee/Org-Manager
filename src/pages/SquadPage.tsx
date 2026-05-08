@@ -1,21 +1,69 @@
-import { useParams, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, Navigate, Link } from 'react-router-dom';
+import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
-import { Card } from '../components/ui/Card';
-import { MemberList } from '../components/members/MemberList';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
-import type { AnyRole } from '../types';
+import type { Assignment, AnyRole } from '../types';
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('');
+}
+
+const AVATAR_COLORS = [
+  'bg-blue-600', 'bg-indigo-600', 'bg-violet-600', 'bg-teal-600',
+  'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600',
+];
+
+function avatarColor(id: string) {
+  let hash = 0;
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'> = {
+  'Delivery Unit Owner': 'blue',
+  'Chief Product Owner': 'indigo',
+  'Delivery Lead': 'green',
+  'Release Train Engineer': 'amber',
+  'Product Owner': 'blue',
+  'Squad Member': 'gray',
+};
+
+// ── page ─────────────────────────────────────────────────────────────────────
 
 export function SquadPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
   const { data, addAssignmentToSquad, removeAssignmentFromSquad } = useAppStore();
   const { isAdmin } = useAuth();
 
+  const [showAdd, setShowAdd] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
+
   const du = data.deliveryUnits.find((d) => d.id === duId);
   const rt = du?.releaseTrains.find((r) => r.id === rtId);
   const sq = rt?.squads.find((s) => s.id === sqId);
 
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
+
+  const getPersonName = (id: string) => data.people.find((p) => p.id === id)?.name ?? 'Unknown';
+
+  // Role breakdown for sidebar
+  const roleBreakdown: Record<string, number> = {};
+  for (const a of sq.assignments) {
+    roleBreakdown[a.role] = (roleBreakdown[a.role] ?? 0) + 1;
+  }
 
   return (
     <Layout
@@ -27,18 +75,257 @@ export function SquadPage() {
         { label: sq.name },
       ]}
     >
-      {sq.description && <p className="text-sm text-gray-500 mb-6">{sq.description}</p>}
+      {/* Description */}
+      {sq.description && (
+        <p className="text-sm text-gray-500 mb-6 max-w-2xl">{sq.description}</p>
+      )}
 
-      <Card>
-        <MemberList
-          assignments={sq.assignments}
+      <div className="flex gap-6 items-start">
+        {/* ── Members panel ─────────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0">
+          {/* Panel header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users2 size={16} className="text-gray-400" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
+                Members
+              </h2>
+              <span className="text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">
+                {sq.assignments.length}
+              </span>
+            </div>
+            {isAdmin && (
+              <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)}>
+                <UserPlus size={13} />
+                Add Member
+              </Button>
+            )}
+          </div>
+
+          {/* Member cards */}
+          {sq.assignments.length === 0 ? (
+            <div className="border border-dashed border-gray-200 rounded-lg py-12 text-center">
+              <Users2 size={24} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-sm text-gray-400">No members assigned yet.</p>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="mt-3 text-sm text-blue-600 hover:underline"
+                >
+                  Add the first member
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {sq.assignments.map((a, i) => {
+                const person = data.people.find((p) => p.id === a.personId);
+                return (
+                  <div
+                    key={`${a.personId}-${a.role}-${i}`}
+                    className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-3 group hover:border-gray-300 hover:shadow-sm transition-all"
+                  >
+                    {/* Avatar */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 ${avatarColor(a.personId)}`}>
+                      {person ? initials(person.name) : '?'}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {person?.name ?? 'Unknown'}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate mb-2">
+                        {person?.email ?? '—'}
+                      </p>
+                      <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
+                    </div>
+
+                    {/* Remove */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => setRemoveTarget(a)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all shrink-0 mt-0.5"
+                        title="Remove"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Context sidebar ───────────────────────────────────────────── */}
+        <aside className="w-64 shrink-0 space-y-4">
+          {/* Unit Context */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+              Unit Context
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <Building2 size={13} className="text-gray-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-400 leading-none mb-0.5">Delivery Unit</p>
+                  <Link
+                    to={`/delivery-units/${du.id}`}
+                    className="font-medium text-blue-600 hover:underline leading-tight"
+                  >
+                    {du.name}
+                  </Link>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Train size={13} className="text-gray-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-400 leading-none mb-0.5">Release Train</p>
+                  <Link
+                    to={`/release-trains/${du.id}/${rt.id}`}
+                    className="font-medium text-blue-600 hover:underline leading-tight"
+                  >
+                    {rt.name}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Role Breakdown */}
+          {sq.assignments.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                Role Breakdown
+              </h3>
+              <div className="space-y-1.5">
+                {Object.entries(roleBreakdown).map(([role, count]) => (
+                  <div key={role} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ChevronRight size={11} className="text-gray-300 shrink-0" />
+                      <span className="text-gray-600 truncate">{role}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5 shrink-0 ml-2">
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Other Squads in this RT */}
+          {rt.squads.filter((s) => s.id !== sq.id).length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                Other Squads
+              </h3>
+              <div className="space-y-1">
+                {rt.squads
+                  .filter((s) => s.id !== sq.id)
+                  .map((s) => (
+                    <Link
+                      key={s.id}
+                      to={`/squads/${du.id}/${rt.id}/${s.id}`}
+                      className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 py-1 transition-colors"
+                    >
+                      <Users2 size={12} className="text-gray-300 shrink-0" />
+                      <span className="truncate">{s.name}</span>
+                    </Link>
+                  ))}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {/* ── Modals ───────────────────────────────────────────────────────── */}
+      {showAdd && (
+        <AddMemberModal
           people={data.people}
           availableRoles={data.roleConfig.squad as AnyRole[]}
-          isAdmin={isAdmin}
-          onAdd={(a) => addAssignmentToSquad(du.id, rt.id, sq.id, a)}
-          onRemove={(personId, role) => removeAssignmentFromSquad(du.id, rt.id, sq.id, personId, role)}
+          existingAssignments={sq.assignments}
+          onAdd={(a) => { addAssignmentToSquad(du.id, rt.id, sq.id, a); setShowAdd(false); }}
+          onClose={() => setShowAdd(false)}
         />
-      </Card>
+      )}
+
+      {removeTarget && (
+        <ConfirmDialog
+          title="Remove Member"
+          message={`Remove ${getPersonName(removeTarget.personId)} (${removeTarget.role}) from ${sq.name}?`}
+          confirmLabel="Remove"
+          onConfirm={() => {
+            removeAssignmentFromSquad(du.id, rt.id, sq.id, removeTarget.personId, removeTarget.role as AnyRole);
+            setRemoveTarget(null);
+          }}
+          onCancel={() => setRemoveTarget(null)}
+        />
+      )}
     </Layout>
+  );
+}
+
+// ── Add Member Modal ──────────────────────────────────────────────────────────
+
+interface AddMemberModalProps {
+  people: { id: string; name: string; email: string }[];
+  availableRoles: AnyRole[];
+  existingAssignments: Assignment[];
+  onAdd: (assignment: Assignment) => void;
+  onClose: () => void;
+}
+
+function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, onClose }: AddMemberModalProps) {
+  const [personId, setPersonId] = useState('');
+  const [role, setRole] = useState<AnyRole>(availableRoles[0] ?? '');
+  const [error, setError] = useState('');
+
+  const availablePeople = people.filter(
+    (p) => !existingAssignments.some((a) => a.personId === p.id && a.role === role),
+  );
+
+  const handleSubmit = () => {
+    if (!personId) { setError('Please select a person.'); return; }
+    if (!role) { setError('Please select a role.'); return; }
+    onAdd({ personId, role });
+  };
+
+  return (
+    <Modal title="Add Member" onClose={onClose}>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Person</label>
+          <select
+            value={personId}
+            onChange={(e) => { setPersonId(e.target.value); setError(''); }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          >
+            <option value="">— Select person —</option>
+            {availablePeople.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Role</label>
+          <select
+            value={role}
+            onChange={(e) => { setRole(e.target.value as AnyRole); setError(''); }}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          >
+            {availableRoles.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" onClick={handleSubmit}>Add Member</Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
