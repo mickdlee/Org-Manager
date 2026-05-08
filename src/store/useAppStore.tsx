@@ -5,7 +5,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding } from '../types';
+import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate } from '../types';
 import { loadData, saveData, resetToSampleData as storageSeed } from '../utils/storage';
 
 interface AppStoreContextValue {
@@ -46,6 +46,11 @@ interface AppStoreContextValue {
   // Onboarding
   updateSquadOnboarding: (duId: string, rtId: string, sqId: string, onboarding: SquadOnboarding) => void;
   updateDeliveryUnitOnboarding: (duId: string, onboarding: DeliveryUnitOnboarding) => void;
+  // Squad Templates
+  addSquadTemplate: (t: Omit<SquadTemplate, 'id'>) => SquadTemplate;
+  updateSquadTemplate: (id: string, t: Partial<Omit<SquadTemplate, 'id'>>) => void;
+  deleteSquadTemplate: (id: string) => void;
+  applySquadTemplate: (duId: string, rtId: string, sqId: string, templateId: string) => void;
 }
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -454,6 +459,63 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // ── Squad Templates ─────────────────────────────────────────────────────────
+  const addSquadTemplate = useCallback((t: Omit<SquadTemplate, 'id'>): SquadTemplate => {
+    const tmpl: SquadTemplate = { id: crypto.randomUUID(), ...t };
+    setData((prev) => {
+      const next = { ...prev, squadTemplates: [...prev.squadTemplates, tmpl] };
+      saveData(next);
+      return next;
+    });
+    return tmpl;
+  }, []);
+
+  const updateSquadTemplate = useCallback((id: string, t: Partial<Omit<SquadTemplate, 'id'>>) => {
+    setData((prev) => {
+      const next = { ...prev, squadTemplates: prev.squadTemplates.map((x) => (x.id === id ? { ...x, ...t } : x)) };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deleteSquadTemplate = useCallback((id: string) => {
+    setData((prev) => {
+      const next = { ...prev, squadTemplates: prev.squadTemplates.filter((x) => x.id !== id) };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const applySquadTemplate = useCallback((duId: string, rtId: string, sqId: string, templateId: string) => {
+    setData((prev) => {
+      const tmpl = prev.squadTemplates.find((t) => t.id === templateId);
+      if (!tmpl) return prev;
+      const newPositions = tmpl.roles.flatMap(({ role, count }) =>
+        Array.from({ length: count }, () => ({ id: crypto.randomUUID(), title: role, priority: 'Medium' as const }))
+      );
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : {
+            ...du,
+            releaseTrains: du.releaseTrains.map((rt) =>
+              rt.id !== rtId ? rt : {
+                ...rt,
+                squads: rt.squads.map((sq) => {
+                  if (sq.id !== sqId) return sq;
+                  const existing = sq.onboarding ?? { candidates: [], openPositions: [], sprintTasks: [] };
+                  return { ...sq, onboarding: { ...existing, openPositions: [...existing.openPositions, ...newPositions] } };
+                }),
+              }
+            ),
+          }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   // ── Lookup helpers ──────────────────────────────────────────────────────────
   const getPersonById = useCallback((id: string) => data.people.find((p) => p.id === id), [data]);
   const getDeliveryUnitById = useCallback((id: string) => data.deliveryUnits.find((d) => d.id === id), [data]);
@@ -473,6 +535,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment,
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
         addRole, removeRole, resetToSampleData, updateSquadOnboarding, updateDeliveryUnitOnboarding,
+        addSquadTemplate, updateSquadTemplate, deleteSquadTemplate, applySquadTemplate,
       }}
     >
       {children}

@@ -20,6 +20,22 @@ export function loadData(): AppData {
           releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
           squad: [...DEFAULT_SQUAD_ROLES],
         };
+      } else {
+        // Migrate: ensure new default roles are present in existing roleConfig lists
+        const ensureRoles = (existing: string[], defaults: readonly string[]) => {
+          const next = [...existing];
+          for (const role of defaults) {
+            if (!next.some((r) => r.toLowerCase() === role.toLowerCase())) {
+              next.push(role);
+            }
+          }
+          return next;
+        };
+        parsed.roleConfig = {
+          deliveryUnit: ensureRoles(parsed.roleConfig.deliveryUnit ?? [], DEFAULT_DELIVERY_UNIT_ROLES),
+          releaseTrain: ensureRoles(parsed.roleConfig.releaseTrain ?? [], DEFAULT_RELEASE_TRAIN_ROLES),
+          squad: ensureRoles(parsed.roleConfig.squad ?? [], DEFAULT_SQUAD_ROLES),
+        };
       }
 
       // Migrate: seed deliveryUnit.type if absent in older saved data
@@ -32,6 +48,12 @@ export function loadData(): AppData {
             : 'Supporting';
         return { ...du, type: inferredType };
       });
+
+      // Migrate: seed squadTemplates if absent
+      if (!parsed.squadTemplates) {
+        parsed.squadTemplates = [];
+      }
+
       return parsed;
     }
   } catch {

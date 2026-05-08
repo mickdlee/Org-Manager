@@ -13,7 +13,17 @@ export const DEFAULT_RELEASE_TRAIN_ROLES = [
   'Product Owner',
 ] as const;
 
-export const DEFAULT_SQUAD_ROLES = ['Squad Member'] as const;
+export const DEFAULT_SQUAD_ROLES = [
+  'Product Owner',
+  'Scrum Master',
+  'Developer',
+  'Business Analyst',
+  'Quality Assurance',
+  'Change Manager',
+  'Subject Matter Expert',
+  'Designer',
+  'Architect',
+] as const;
 
 export type DeliveryUnitType = 'Customer Journey' | 'Platform' | 'Supporting';
 
@@ -110,10 +120,22 @@ export interface DeliveryUnit {
   onboarding?: DeliveryUnitOnboarding;
 }
 
+export interface SquadTemplateRole {
+  role: string;
+  count: number;
+}
+
+export interface SquadTemplate {
+  id: string;
+  name: string;
+  roles: SquadTemplateRole[];
+}
+
 export interface AppData {
   deliveryUnits: DeliveryUnit[];
   people: Person[];
   roleConfig: RoleConfig;
+  squadTemplates: SquadTemplate[];
 }
 
 // Auth types

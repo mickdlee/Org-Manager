@@ -249,5 +249,6 @@ export function generateSeedData(): AppData {
       releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
       squad: [...DEFAULT_SQUAD_ROLES],
     },
+    squadTemplates: [],
   };
 }

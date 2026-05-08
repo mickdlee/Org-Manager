@@ -6,9 +6,9 @@ import { Input } from '../components/ui/Input';
 import { useAuth } from '../hooks/useAuth';
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
-import { Plus, Trash2, RefreshCw } from 'lucide-react';
-import type { RoleConfig } from '../types';
-import { ConfirmDialog } from '../components/ui/Modal';
+import { Plus, Trash2, RefreshCw, Pencil } from 'lucide-react';
+import type { RoleConfig, SquadTemplate, SquadTemplateRole } from '../types';
+import { ConfirmDialog, Modal } from '../components/ui/Modal';
 
 export function SettingsPage() {
   const { isAdmin, createUser } = useAuth();
@@ -18,6 +18,7 @@ export function SettingsPage() {
     <Layout title="Settings">
       <div className="max-w-xl space-y-6">
         <SampleDataSection />
+        <SquadTemplatesSection />
         <RoleConfigSection />
         <CreateUserSection createUser={createUser} />
       </div>
@@ -206,3 +207,195 @@ function CreateUserSection({ createUser }: { createUser: (username: string, pass
   );
 }
 
+// ── Squad Templates ───────────────────────────────────────────────────────────
+
+function SquadTemplatesSection() {
+  const { data, addSquadTemplate, updateSquadTemplate, deleteSquadTemplate } = useAppStore();
+  const [showCreate, setShowCreate] = useState(false);
+  const [editTarget, setEditTarget] = useState<string | null>(null);
+
+  const editTemplate = data.squadTemplates.find((t) => t.id === editTarget);
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-semibold text-gray-800">Squad Templates</h2>
+        <Button size="sm" variant="secondary" onClick={() => setShowCreate(true)}>
+          <Plus size={13} /> New Template
+        </Button>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">
+        Define reusable role compositions for squads. Applying a template creates open positions in the squad's onboarding pipeline.
+      </p>
+
+      {data.squadTemplates.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded">
+          No templates yet. Create one to get started.
+        </p>
+      ) : (
+        <div className="border border-gray-200 rounded overflow-hidden">
+          {data.squadTemplates.map((tmpl) => (
+            <div
+              key={tmpl.id}
+              className="flex items-start justify-between px-3 py-3 border-b border-gray-100 last:border-0 even:bg-gray-50/40"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800 mb-1">{tmpl.name}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {tmpl.roles.map((r, i) => (
+                    <span key={i} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2 py-0.5">
+                      {r.role} ×{r.count}
+                    </span>
+                  ))}
+                  {tmpl.roles.length === 0 && <span className="text-xs text-gray-400">No roles defined</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 ml-3 mt-0.5">
+                <button
+                  onClick={() => setEditTarget(tmpl.id)}
+                  className="text-gray-300 hover:text-gray-600 transition-colors"
+                  title="Edit template"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  onClick={() => deleteSquadTemplate(tmpl.id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  title="Delete template"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <TemplateFormModal
+          title="New Squad Template"
+          initial={{ name: '', roles: [] }}
+          squadRoles={data.roleConfig.squad}
+          onClose={() => setShowCreate(false)}
+          onSubmit={(name, roles) => { addSquadTemplate({ name, roles }); setShowCreate(false); }}
+        />
+      )}
+      {editTemplate && (
+        <TemplateFormModal
+          title="Edit Squad Template"
+          initial={{ name: editTemplate.name, roles: editTemplate.roles }}
+          squadRoles={data.roleConfig.squad}
+          onClose={() => setEditTarget(null)}
+          onSubmit={(name, roles) => { updateSquadTemplate(editTemplate.id, { name, roles }); setEditTarget(null); }}
+        />
+      )}
+    </Card>
+  );
+}
+
+interface TemplateFormModalProps {
+  title: string;
+  initial: { name: string; roles: SquadTemplateRole[] };
+  squadRoles: string[];
+  onClose: () => void;
+  onSubmit: (name: string, roles: SquadTemplateRole[]) => void;
+}
+
+function TemplateFormModal({ title, initial, squadRoles, onClose, onSubmit }: TemplateFormModalProps) {
+  const [name, setName] = useState(initial.name);
+  const [roles, setRoles] = useState<SquadTemplateRole[]>(initial.roles.map((r) => ({ ...r })));
+  const [selectedRole, setSelectedRole] = useState(squadRoles[0] ?? '');
+  const [count, setCount] = useState(1);
+  const [nameError, setNameError] = useState('');
+
+  const addRole = () => {
+    if (!selectedRole) return;
+    const existing = roles.findIndex((r) => r.role === selectedRole);
+    if (existing >= 0) {
+      setRoles((prev) => prev.map((r, i) => i === existing ? { ...r, count: r.count + count } : r));
+    } else {
+      setRoles((prev) => [...prev, { role: selectedRole, count }]);
+    }
+  };
+
+  const removeRole = (role: string) => setRoles((prev) => prev.filter((r) => r.role !== role));
+
+  const updateCount = (role: string, val: number) => {
+    if (val < 1) return;
+    setRoles((prev) => prev.map((r) => r.role === role ? { ...r, count: val } : r));
+  };
+
+  const handleSubmit = () => {
+    if (!name.trim()) { setNameError('Template name is required.'); return; }
+    onSubmit(name.trim(), roles);
+  };
+
+  return (
+    <Modal title={title} onClose={onClose}>
+      <div className="space-y-4 min-w-80">
+        <Input
+          label="Template Name"
+          placeholder="e.g. Feature Squad"
+          value={name}
+          onChange={(e) => { setName(e.target.value); setNameError(''); }}
+          error={nameError}
+        />
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-2">Roles</label>
+          {roles.length > 0 ? (
+            <div className="border border-gray-200 rounded overflow-hidden mb-3">
+              {roles.map((r) => (
+                <div key={r.role} className="flex items-center justify-between px-3 py-2 border-b border-gray-100 last:border-0 text-sm">
+                  <span className="text-gray-700 flex-1">{r.role}</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={r.count}
+                      onChange={(e) => updateCount(r.role, Number(e.target.value))}
+                      className="w-14 text-center border border-gray-200 rounded px-1 py-0.5 text-sm focus:outline-none focus:border-secondary"
+                    />
+                    <button onClick={() => removeRole(r.role)} className="text-gray-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mb-3">No roles added yet.</p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="flex-1 rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+            >
+              {squadRoles.length === 0 && <option value="">No squad roles defined</option>}
+              {squadRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={count}
+              onChange={(e) => setCount(Math.max(1, Number(e.target.value)))}
+              className="w-14 text-center border border-gray-200 rounded px-1 py-1.5 text-sm focus:outline-none focus:border-secondary"
+            />
+            <Button size="sm" variant="secondary" onClick={addRole} disabled={!selectedRole}>
+              <Plus size={13} /> Add
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit}>Save Template</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

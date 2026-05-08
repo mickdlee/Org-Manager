@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign, Pencil } from 'lucide-react';
+import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign, Pencil, LayoutTemplate } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -10,7 +10,7 @@ import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH, personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
-import type { Assignment, AnyRole } from '../types';
+import type { Assignment, AnyRole, SquadTemplate } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,11 +47,12 @@ const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'>
 
 export function SquadPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
-  const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment, updateSquad } = useAppStore();
+  const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment, updateSquad, applySquadTemplate, updateSquadOnboarding } = useAppStore();
   const { isAdmin } = useAuth();
 
   const [showAdd, setShowAdd] = useState(false);
   const [showEditTeam, setShowEditTeam] = useState(false);
+  const [showApplyTemplate, setShowApplyTemplate] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
@@ -61,11 +62,27 @@ export function SquadPage() {
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
 
   const getPersonName = (id: string) => data.people.find((p) => p.id === id)?.name ?? 'Unknown';
+  const onboarding = sq.onboarding ?? {
+    sprintName: '',
+    hiringPriority: 'Medium' as const,
+    pendingOffboarding: 0,
+    avgRampUpDays: 14,
+    candidates: [],
+    openPositions: [],
+    sprintTasks: [],
+  };
 
   // Role breakdown for sidebar
   const roleBreakdown: Record<string, number> = {};
   for (const a of sq.assignments) {
     roleBreakdown[a.role] = (roleBreakdown[a.role] ?? 0) + 1;
+  }
+
+  // Unfilled roles from squad onboarding open positions
+  const unfilledRoleBreakdown: Record<string, number> = {};
+  const openPositions = onboarding.openPositions;
+  for (const pos of openPositions) {
+    unfilledRoleBreakdown[pos.title] = (unfilledRoleBreakdown[pos.title] ?? 0) + 1;
   }
 
   return (
@@ -129,16 +146,24 @@ export function SquadPage() {
                 );
               })()}
               {isAdmin && (
-                <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)}>
-                  <UserPlus size={13} />
-                  Add Member
-                </Button>
+                <div className="flex items-center gap-2">
+                  {data.squadTemplates.length > 0 && (
+                    <Button size="sm" variant="ghost" onClick={() => setShowApplyTemplate(true)}>
+                      <LayoutTemplate size={13} />
+                      Apply Template
+                    </Button>
+                  )}
+                  <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)}>
+                    <UserPlus size={13} />
+                    Add Member
+                  </Button>
+                </div>
               )}
             </div>
           </div>
 
           {/* Member cards */}
-          {sq.assignments.length === 0 ? (
+          {sq.assignments.length === 0 && openPositions.length === 0 ? (
             <div className="border border-dashed border-gray-200 rounded-lg py-12 text-center">
               <Users2 size={24} className="mx-auto text-gray-300 mb-2" />
               <p className="text-sm text-gray-400">No members assigned yet.</p>
@@ -266,6 +291,46 @@ export function SquadPage() {
                   </div>
                 );
               })}
+              {openPositions.map((pos) => (
+                <div
+                  key={`open-${pos.id}`}
+                  className="rounded-lg p-4 flex items-start gap-4 bg-amber-50 border border-amber-200 relative group"
+                >
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-amber-700 text-base font-semibold shrink-0 bg-amber-100 ring-2 ring-amber-100">
+                    ?
+                  </div>
+
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <p className="text-base font-semibold text-amber-800 truncate">
+                      Unfilled Role
+                    </p>
+                    <p className="text-xs text-amber-700/80 truncate mb-2">
+                      Placeholder position
+                    </p>
+                    <div className="flex items-center gap-2 mb-2 text-xs text-amber-800">
+                      <span>Priority: {pos.priority}</span>
+                    </div>
+                    <Badge color="amber">{pos.title}</Badge>
+                    <p className="text-[11px] text-amber-700 mt-3">
+                      Fill this role from the onboarding pipeline.
+                    </p>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() =>
+                        updateSquadOnboarding(du.id, rt.id, sq.id, {
+                          ...onboarding,
+                          openPositions: onboarding.openPositions.filter((p) => p.id !== pos.id),
+                        })
+                      }
+                      className="opacity-0 group-hover:opacity-100 text-amber-400 hover:text-red-500 transition-all shrink-0 mt-0.5"
+                      title="Remove unfilled role"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -319,6 +384,28 @@ export function SquadPage() {
                       <span className="text-gray-600 truncate">{role}</span>
                     </div>
                     <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5 shrink-0 ml-2">
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Unfilled Roles */}
+          {Object.keys(unfilledRoleBreakdown).length > 0 && (
+            <div className="bg-white border border-amber-200 rounded-lg p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3">
+                Unfilled Roles
+              </h3>
+              <div className="space-y-1.5">
+                {Object.entries(unfilledRoleBreakdown).map(([role, count]) => (
+                  <div key={role} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ChevronRight size={11} className="text-amber-300 shrink-0" />
+                      <span className="text-gray-700 truncate">{role}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-amber-800 bg-amber-100 rounded-full px-2 py-0.5 shrink-0 ml-2">
                       {count}
                     </span>
                   </div>
@@ -384,6 +471,17 @@ export function SquadPage() {
           onSave={(name, description) => {
             updateSquad(du.id, rt.id, sq.id, { name, description });
             setShowEditTeam(false);
+          }}
+        />
+      )}
+
+      {showApplyTemplate && (
+        <ApplyTemplateModal
+          templates={data.squadTemplates}
+          onClose={() => setShowApplyTemplate(false)}
+          onApply={(templateId) => {
+            applySquadTemplate(du.id, rt.id, sq.id, templateId);
+            setShowApplyTemplate(false);
           }}
         />
       )}
@@ -503,6 +601,57 @@ function EditTeamModal({ initialName, initialDescription, onClose, onSave }: Edi
           rows={4}
           placeholder="Describe this team..."
         />
+      </div>
+    </Modal>
+  );
+}
+
+// ── Apply Template Modal ──────────────────────────────────────────────────────
+
+interface ApplyTemplateModalProps {
+  templates: SquadTemplate[];
+  onClose: () => void;
+  onApply: (templateId: string) => void;
+}
+
+function ApplyTemplateModal({ templates, onClose, onApply }: ApplyTemplateModalProps) {
+  const [selected, setSelected] = useState(templates[0]?.id ?? '');
+  const preview = templates.find((t) => t.id === selected);
+
+  return (
+    <Modal title="Apply Squad Template" onClose={onClose}>
+      <div className="space-y-4 min-w-72">
+        <p className="text-xs text-gray-500">
+          Applying a template creates open positions in this squad's onboarding pipeline for each role defined in the template.
+        </p>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-2">Template</label>
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="w-full rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+          >
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+        {preview && preview.roles.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Open positions to be created</p>
+            <div className="flex flex-wrap gap-1.5">
+              {preview.roles.map((r, i) => (
+                <span key={i} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2 py-0.5">
+                  {r.role} ×{r.count}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onApply(selected)} disabled={!selected}>Apply</Button>
+        </div>
       </div>
     </Modal>
   );
