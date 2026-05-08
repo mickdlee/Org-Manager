@@ -50,10 +50,11 @@ export function loadData(): AppData {
       });
 
       // Migrate: seed assignment-level offboarding flag if absent
-      const withAssignmentFlags = (assignments: { isScheduledOffboarding?: boolean }[]) =>
+      const withAssignmentFlags = (assignments: { isScheduledOffboarding?: boolean; offboardingDate?: string }[]) =>
         assignments.map((a) => ({
           ...a,
           isScheduledOffboarding: Boolean(a.isScheduledOffboarding),
+          offboardingDate: a.isScheduledOffboarding ? (a.offboardingDate ?? undefined) : undefined,
         }));
 
       parsed.deliveryUnits = parsed.deliveryUnits.map((du) => ({

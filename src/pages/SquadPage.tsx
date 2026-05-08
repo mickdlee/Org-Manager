@@ -231,20 +231,41 @@ export function SquadPage() {
                         <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
                         {a.isScheduledOffboarding && <Badge color="red">Offboarding</Badge>}
                       </div>
+                      {a.isScheduledOffboarding && a.offboardingDate && (
+                        <p className="mt-1 text-xs text-gray-500">Offboarding date: {a.offboardingDate}</p>
+                      )}
                       {isAdmin && (
-                        <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(a.isScheduledOffboarding)}
-                            onChange={(e) =>
-                              updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
-                                isScheduledOffboarding: e.target.checked,
-                              })
-                            }
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          Scheduled offboarding
-                        </label>
+                        <div className="mt-2 space-y-2">
+                          <label className="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(a.isScheduledOffboarding)}
+                              onChange={(e) =>
+                                updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
+                                  isScheduledOffboarding: e.target.checked,
+                                  offboardingDate: e.target.checked ? a.offboardingDate : undefined,
+                                })
+                              }
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Scheduled offboarding
+                          </label>
+                          {a.isScheduledOffboarding && (
+                            <div>
+                              <label className="block text-[11px] text-gray-500 mb-1">Offboarding date</label>
+                              <input
+                                type="date"
+                                value={a.offboardingDate ?? ''}
+                                onChange={(e) =>
+                                  updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
+                                    offboardingDate: e.target.value || undefined,
+                                  })
+                                }
+                                className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                          )}
+                        </div>
                       )}
                       {/* Allocation slider */}
                       <div className="mt-3">

@@ -42,6 +42,15 @@ export function DeliveryUnitOnboardingPage() {
   const allSquads = du.releaseTrains.flatMap((rt) => rt.squads);
   const totalSquadCandidates = allSquads.reduce((sum, sq) => sum + (sq.onboarding?.candidates.length ?? 0), 0);
   const totalSquadOpenPositions = allSquads.reduce((sum, sq) => sum + (sq.onboarding?.openPositions.length ?? 0), 0);
+  const totalScheduledOffboarding =
+    du.assignments.filter((a) => a.isScheduledOffboarding).length +
+    du.releaseTrains.reduce(
+      (sum, rt) =>
+        sum +
+        rt.assignments.filter((a) => a.isScheduledOffboarding).length +
+        rt.squads.reduce((sqSum, sq) => sqSum + sq.assignments.filter((a) => a.isScheduledOffboarding).length, 0),
+      0,
+    );
 
   return (
     <Layout
@@ -90,7 +99,7 @@ export function DeliveryUnitOnboardingPage() {
           <StatCard
             icon={<UserMinus size={16} />}
             label="Pending Offboarding"
-            value={ob.totalPendingOffboarding ?? 0}
+            value={totalScheduledOffboarding}
             color="text-amber-600"
           />
           <StatCard
@@ -126,7 +135,9 @@ export function DeliveryUnitOnboardingPage() {
                   {du.releaseTrains.map((rt) => {
                     const rtSquads = rt.squads;
                     const rtOnboarding = rtSquads.reduce((sum, sq) => sum + (sq.onboarding?.candidates.length ?? 0), 0);
-                    const rtOffboarding = rtSquads.reduce((sum, sq) => sum + (sq.onboarding?.pendingOffboarding ?? 0), 0);
+                    const rtOffboarding =
+                      rt.assignments.filter((a) => a.isScheduledOffboarding).length +
+                      rtSquads.reduce((sum, sq) => sum + sq.assignments.filter((a) => a.isScheduledOffboarding).length, 0);
                     return (
                       <tr key={rt.id} className="border-b border-gray-100 last:border-0 even:bg-gray-50/50 hover:bg-gray-100/50">
                         <td className="px-6 py-3">
@@ -241,11 +252,11 @@ export function DeliveryUnitOnboardingPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Total Pending Offboarding</label>
                 <input
                   type="number"
-                  min={0}
-                  value={ob.totalPendingOffboarding ?? 0}
-                  onChange={(e) => save({ ...ob, totalPendingOffboarding: Number(e.target.value) })}
-                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                  value={totalScheduledOffboarding}
+                  disabled
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
                 />
+                <p className="text-[11px] text-gray-400 mt-1">Calculated from roles flagged as Scheduled offboarding.</p>
               </div>
             </div>
           </section>

@@ -94,7 +94,7 @@ export function ReleaseTrainPage() {
           {rt.squads.map((sq) => {
             const emptyRoles = sq.onboarding?.openPositions.length ?? 0;
             const pipeline = sq.onboarding?.candidates.length ?? 0;
-            const pendingOffboarding = sq.onboarding?.pendingOffboarding ?? 0;
+            const pendingOffboarding = sq.assignments.filter((a) => a.isScheduledOffboarding).length;
             const avgRampUpDays = sq.onboarding?.avgRampUpDays ?? 0;
             const hiringPriority = sq.onboarding?.hiringPriority ?? 'Medium';
             return (

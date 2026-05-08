@@ -109,18 +109,41 @@ export function MemberList({ assignments, people, availableRoles, isAdmin, showF
                     <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
                     {a.isScheduledOffboarding && <Badge color="red">Offboarding</Badge>}
                   </div>
+                  {a.isScheduledOffboarding && a.offboardingDate && (
+                    <p className="mt-1 text-xs text-gray-500">Offboarding date: {a.offboardingDate}</p>
+                  )}
                   {isAdmin && onUpdate && (
-                    <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(a.isScheduledOffboarding)}
-                        onChange={(e) =>
-                          onUpdate(a.personId, a.role, { isScheduledOffboarding: e.target.checked })
-                        }
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      Scheduled offboarding
-                    </label>
+                    <div className="mt-2 space-y-2">
+                      <label className="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(a.isScheduledOffboarding)}
+                          onChange={(e) =>
+                            onUpdate(a.personId, a.role, {
+                              isScheduledOffboarding: e.target.checked,
+                              offboardingDate: e.target.checked ? a.offboardingDate : undefined,
+                            })
+                          }
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        Scheduled offboarding
+                      </label>
+                      {a.isScheduledOffboarding && (
+                        <div>
+                          <label className="block text-[11px] text-gray-500 mb-1">Offboarding date</label>
+                          <input
+                            type="date"
+                            value={a.offboardingDate ?? ''}
+                            onChange={(e) =>
+                              onUpdate(a.personId, a.role, {
+                                offboardingDate: e.target.value || undefined,
+                              })
+                            }
+                            className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -174,13 +197,19 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
   const [personId, setPersonId] = useState('');
   const [role, setRole] = useState<AnyRole>(availableRoles[0]);
   const [isScheduledOffboarding, setIsScheduledOffboarding] = useState(false);
+  const [offboardingDate, setOffboardingDate] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
     if (!personId) { setError('Please select a person.'); return; }
     const duplicate = existingAssignments.find((a) => a.personId === personId && a.role === role);
     if (duplicate) { setError('This person already holds this role here.'); return; }
-    onAdd({ personId, role, isScheduledOffboarding });
+    onAdd({
+      personId,
+      role,
+      isScheduledOffboarding,
+      offboardingDate: isScheduledOffboarding ? (offboardingDate || undefined) : undefined,
+    });
   };
 
   return (
@@ -224,11 +253,25 @@ function AddMemberModal({ people, availableRoles, existingAssignments, onAdd, on
           <input
             type="checkbox"
             checked={isScheduledOffboarding}
-            onChange={(e) => setIsScheduledOffboarding(e.target.checked)}
+            onChange={(e) => {
+              setIsScheduledOffboarding(e.target.checked);
+              if (!e.target.checked) setOffboardingDate('');
+            }}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           Scheduled for offboarding
         </label>
+        {isScheduledOffboarding && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Offboarding Date</label>
+            <input
+              type="date"
+              value={offboardingDate}
+              onChange={(e) => setOffboardingDate(e.target.value)}
+              className="block w-full rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+            />
+          </div>
+        )}
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
     </Modal>

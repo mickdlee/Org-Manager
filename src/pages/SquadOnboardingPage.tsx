@@ -63,6 +63,7 @@ export function SquadOnboardingPage() {
   const save = (next: SquadOnboarding) => updateSquadOnboarding(du.id, rt.id, sq.id, next);
 
   const totalInPipeline = ob.candidates.length;
+  const scheduledOffboardingCount = sq.assignments.filter((a) => a.isScheduledOffboarding).length;
 
   return (
     <Layout
@@ -91,7 +92,7 @@ export function SquadOnboardingPage() {
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard icon={<Users size={16} />}    label="Members"            value={sq.assignments.length}            color="text-blue-600" />
-        <StatCard icon={<UserMinus size={16} />} label="Pending Offboarding" value={ob.pendingOffboarding ?? 0}       color="text-amber-600" />
+        <StatCard icon={<UserMinus size={16} />} label="Pending Offboarding" value={scheduledOffboardingCount}        color="text-amber-600" />
         <StatCard icon={<Zap size={16} />}       label="Avg Ramp-up"        value={`${ob.avgRampUpDays ?? 0}d`}      color="text-emerald-600" sub="Average" />
         <StatCard icon={<Briefcase size={16} />} label="Open Positions"     value={ob.openPositions.length}          color="text-indigo-600" sub="Active" />
       </div>
@@ -271,11 +272,11 @@ export function SquadOnboardingPage() {
                   <label className="block text-xs text-gray-500 mb-1">Pending Offboarding</label>
                   <input
                     type="number"
-                    min={0}
-                    value={ob.pendingOffboarding ?? ''}
-                    onChange={(e) => save({ ...ob, pendingOffboarding: Number(e.target.value) })}
-                    className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+                    value={scheduledOffboardingCount}
+                    disabled
+                    className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
+                  <p className="text-[11px] text-gray-400 mt-1">Calculated from members flagged as Scheduled offboarding.</p>
                 </div>
               </div>
             </div>
