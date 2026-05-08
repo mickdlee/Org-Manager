@@ -5,7 +5,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig } from '../types';
+import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding } from '../types';
 import { loadData, saveData, resetToSampleData as storageSeed } from '../utils/storage';
 
 interface AppStoreContextValue {
@@ -42,6 +42,9 @@ interface AppStoreContextValue {
   addRole: (layer: keyof RoleConfig, role: string) => void;
   removeRole: (layer: keyof RoleConfig, role: string) => void;
   resetToSampleData: () => void;
+  // Onboarding
+  updateSquadOnboarding: (duId: string, rtId: string, sqId: string, onboarding: SquadOnboarding) => void;
+  updateDeliveryUnitOnboarding: (duId: string, onboarding: DeliveryUnitOnboarding) => void;
 }
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -380,6 +383,42 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setData(seed);
   }, []);
 
+  const updateSquadOnboarding = useCallback((duId: string, rtId: string, sqId: string, onboarding: SquadOnboarding) => {
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : {
+            ...du,
+            releaseTrains: du.releaseTrains.map((rt) =>
+              rt.id !== rtId ? rt : {
+                ...rt,
+                squads: rt.squads.map((sq) =>
+                  sq.id !== sqId ? sq : { ...sq, onboarding }
+                ),
+              }
+            ),
+          }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const updateDeliveryUnitOnboarding = useCallback((duId: string, onboarding: DeliveryUnitOnboarding) => {
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : { ...du, onboarding }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   // ── Lookup helpers ──────────────────────────────────────────────────────────
   const getPersonById = useCallback((id: string) => data.people.find((p) => p.id === id), [data]);
   const getDeliveryUnitById = useCallback((id: string) => data.deliveryUnits.find((d) => d.id === id), [data]);
@@ -398,7 +437,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addAssignmentToRT, removeAssignmentFromRT,
         addAssignmentToSquad, removeAssignmentFromSquad,
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
-        addRole, removeRole, resetToSampleData,
+        addRole, removeRole, resetToSampleData, updateSquadOnboarding, updateDeliveryUnitOnboarding,
       }}
     >
       {children}

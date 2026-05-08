@@ -32,11 +32,53 @@ export interface Assignment {
   role: AnyRole;
 }
 
+// Onboarding types
+export type OnboardingStage = 'Recruitment' | 'Pre-boarding' | 'Ramp-up';
+export type SprintTaskStatus = 'To Do' | 'In Progress' | 'Done';
+export type HiringPriority = 'Low' | 'Medium' | 'High';
+
+export interface OnboardingCandidate {
+  id: string;
+  name: string;
+  stage: OnboardingStage;
+}
+
+export interface OpenPosition {
+  id: string;
+  title: string;
+  priority: HiringPriority;
+}
+
+export interface SprintTask {
+  id: string;
+  title: string;
+  assigneePersonId?: string;
+  status: SprintTaskStatus;
+}
+
+export interface SquadOnboarding {
+  sprintName?: string;
+  hiringPriority?: HiringPriority;
+  pendingOffboarding?: number;
+  avgRampUpDays?: number;
+  candidates: OnboardingCandidate[];
+  openPositions: OpenPosition[];
+  sprintTasks: SprintTask[];
+}
+
+export interface DeliveryUnitOnboarding {
+  overallHealthStatus?: 'Healthy' | 'Attention' | 'Critical';
+  totalNewHires?: number;
+  totalOpenRoles?: number;
+  totalPendingOffboarding?: number;
+}
+
 export interface Squad {
   id: string;
   name: string;
   description: string;
   assignments: Assignment[];
+  onboarding?: SquadOnboarding;
 }
 
 export interface ReleaseTrain {
@@ -53,6 +95,7 @@ export interface DeliveryUnit {
   description: string;
   assignments: Assignment[];
   releaseTrains: ReleaseTrain[];
+  onboarding?: DeliveryUnitOnboarding;
 }
 
 export interface AppData {

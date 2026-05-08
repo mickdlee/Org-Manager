@@ -75,6 +75,19 @@ export function SquadPage() {
         { label: sq.name },
       ]}
     >
+      {/* Tab strip */}
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
+          Members
+        </span>
+        <Link
+          to={`/squads/${du.id}/${rt.id}/${sq.id}/onboarding`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          Onboarding
+        </Link>
+      </div>
+
       {/* Description */}
       {sq.description && (
         <p className="text-sm text-gray-500 mb-6 max-w-2xl">{sq.description}</p>

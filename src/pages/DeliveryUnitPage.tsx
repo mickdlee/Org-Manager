@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { Train, Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
@@ -33,6 +33,19 @@ export function DeliveryUnitPage() {
       title={du.name}
       breadcrumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: du.name }]}
     >
+      {/* Tab strip */}
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
+          Overview
+        </span>
+        <Link
+          to={`/delivery-units/${du.id}/onboarding`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          Onboarding
+        </Link>
+      </div>
+
       {du.description && <p className="text-sm text-gray-500 mb-6">{du.description}</p>}
 
       {/* Members */}

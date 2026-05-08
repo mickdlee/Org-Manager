@@ -52,6 +52,28 @@ export function generateSeedData(): AppData {
               { personId: 'p06', role: 'Squad Member' },
               { personId: 'p07', role: 'Squad Member' },
             ],
+            onboarding: {
+              sprintName: 'S-42',
+              hiringPriority: 'High',
+              pendingOffboarding: 1,
+              avgRampUpDays: 12,
+              candidates: [
+                { id: 'c01', name: 'Alice Thompson', stage: 'Recruitment' },
+                { id: 'c02', name: 'Bob Chen',       stage: 'Recruitment' },
+                { id: 'c03', name: 'Clara Marsh',    stage: 'Pre-boarding' },
+                { id: 'c04', name: 'Dan Rivera',     stage: 'Ramp-up' },
+                { id: 'c05', name: 'Eve Okonkwo',    stage: 'Ramp-up' },
+              ],
+              openPositions: [
+                { id: 'op01', title: 'Senior Cloud Engineer',      priority: 'High' },
+                { id: 'op02', title: 'Site Reliability Engineer',  priority: 'Medium' },
+              ],
+              sprintTasks: [
+                { id: 'st01', title: 'Real-time S3 Ingestion Hook',   assigneePersonId: 'p06', status: 'In Progress' },
+                { id: 'st02', title: 'Schema Registry Integration',    assigneePersonId: 'p07', status: 'To Do' },
+                { id: 'st03', title: 'Cost Dashboard v2',                               status: 'To Do' },
+              ],
+            },
           },
           {
             id: 'sq02',
@@ -101,6 +123,12 @@ export function generateSeedData(): AppData {
         ],
       },
     ],
+    onboarding: {
+      overallHealthStatus: 'Healthy',
+      totalNewHires: 8,
+      totalOpenRoles: 12,
+      totalPendingOffboarding: 2,
+    },
   };
 
   // ── Delivery Unit 2: Customer Products ─────────────────────────────────────
@@ -132,6 +160,26 @@ export function generateSeedData(): AppData {
               { personId: 'p10', role: 'Squad Member' },
               { personId: 'p11', role: 'Squad Member' },
             ],
+            onboarding: {
+              sprintName: 'S-17',
+              hiringPriority: 'Medium',
+              pendingOffboarding: 0,
+              avgRampUpDays: 18,
+              candidates: [
+                { id: 'c06', name: 'Fiona Blake',   stage: 'Recruitment' },
+                { id: 'c07', name: 'George Addo',   stage: 'Pre-boarding' },
+                { id: 'c08', name: 'Hana Sato',     stage: 'Ramp-up' },
+              ],
+              openPositions: [
+                { id: 'op03', title: 'Backend Engineer – Payments', priority: 'Medium' },
+              ],
+              sprintTasks: [
+                { id: 'st04', title: 'PCI-DSS Token Vault Migration',   assigneePersonId: 'p09', status: 'In Progress' },
+                { id: 'st05', title: 'Refund Workflow Refactor',         assigneePersonId: 'p10', status: 'In Progress' },
+                { id: 'st06', title: 'Gateway Timeout Alerts',           assigneePersonId: 'p11', status: 'Done' },
+                { id: 'st07', title: 'Batch Reconciliation Performance',                          status: 'To Do' },
+              ],
+            },
           },
           {
             id: 'sq07',
@@ -183,6 +231,12 @@ export function generateSeedData(): AppData {
         ],
       },
     ],
+    onboarding: {
+      overallHealthStatus: 'Attention',
+      totalNewHires: 12,
+      totalOpenRoles: 18,
+      totalPendingOffboarding: 1,
+    },
   };
 
   return {
