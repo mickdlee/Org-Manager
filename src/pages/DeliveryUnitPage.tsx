@@ -6,16 +6,32 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
-import { Input, TextArea } from '../components/ui/Input';
+import { Input, TextArea, Select } from '../components/ui/Input';
 import { MemberList } from '../components/members/MemberList';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { duDailyCost, rtDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
-import type { AnyRole } from '../types';
+import type { AnyRole, DeliveryUnitOKR, DeliveryUnitKeyResult, OpenPosition } from '../types';
+
+const CURRENT_YEAR = new Date().getFullYear();
+const OKR_YEARS = [CURRENT_YEAR, CURRENT_YEAR + 1, CURRENT_YEAR + 2];
 
 export function DeliveryUnitPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, addReleaseTrain, updateReleaseTrain, deleteReleaseTrain, addAssignmentToDU, removeAssignmentFromDU, updateDUAssignment } = useAppStore();
+  const {
+    data,
+    addReleaseTrain,
+    updateReleaseTrain,
+    deleteReleaseTrain,
+    addAssignmentToDU,
+    removeAssignmentFromDU,
+    updateDUAssignment,
+    addDeliveryUnitOKR,
+    updateDeliveryUnitOKR,
+    deleteDeliveryUnitOKR,
+    addDUOpenPosition,
+    removeDUOpenPosition,
+  } = useAppStore();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -26,9 +42,17 @@ export function DeliveryUnitPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [showCreateOKR, setShowCreateOKR] = useState(false);
+  const [editOKRTarget, setEditOKRTarget] = useState<string | null>(null);
+  const [deleteOKRTarget, setDeleteOKRTarget] = useState<string | null>(null);
+  const [showCreateOpenPosition, setShowCreateOpenPosition] = useState(false);
+  const [deleteOpenPositionTarget, setDeleteOpenPositionTarget] = useState<string | null>(null);
 
   const editRt = du.releaseTrains.find((r) => r.id === editTarget);
   const deleteRt = du.releaseTrains.find((r) => r.id === deleteTarget);
+  const okrs = du.okrs ?? [];
+  const editOKR = okrs.find((o) => o.id === editOKRTarget);
+  const deleteOKR = okrs.find((o) => o.id === deleteOKRTarget);
 
   return (
     <Layout
@@ -66,6 +90,88 @@ export function DeliveryUnitPage() {
           </div>
         );
       })()}
+      {/* OKRs */}
+      <Card className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-gray-700 flex items-center gap-2">
+            <Briefcase size={16} /> OKRs
+            <span className="text-xs text-gray-400 font-normal">({okrs.length})</span>
+          </h2>
+          {isAdmin && (
+            <Button size="sm" onClick={() => setShowCreateOKR(true)}>
+              <Plus size={13} /> New OKR
+            </Button>
+          )}
+        </div>
+
+        {okrs.length === 0 ? (
+          <p className="text-sm text-gray-400">No OKRs defined for this Delivery Unit yet.</p>
+        ) : (
+          <div className="overflow-x-auto border border-gray-200 rounded">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left">Objective</th>
+                  <th className="px-3 py-2 text-left">Key Result</th>
+                  <th className="px-3 py-2 text-left">Baseline</th>
+                  <th className="px-3 py-2 text-left">{OKR_YEARS[0]} Target</th>
+                  <th className="px-3 py-2 text-left">{OKR_YEARS[1]} Target</th>
+                  <th className="px-3 py-2 text-left">{OKR_YEARS[2]} Target</th>
+                  <th className="px-3 py-2 text-left">Notes</th>
+                  <th className="px-3 py-2 text-left">Progress</th>
+                  <th className="px-3 py-2 text-left">Target Date</th>
+                  {isAdmin && <th className="px-3 py-2 text-left">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {okrs.flatMap((okr) => {
+                  const rows = okr.keyResults.length > 0 ? okr.keyResults : [{
+                    id: `${okr.id}-empty`,
+                    title: 'No key results',
+                    baseline: '',
+                    notes: '',
+                    yearlyTargets: OKR_YEARS.map((year) => ({ year, target: '' })),
+                  }];
+
+                  return rows.map((kr, idx) => {
+                    const t0 = kr.yearlyTargets.find((t) => t.year === OKR_YEARS[0])?.target ?? '';
+                    const t1 = kr.yearlyTargets.find((t) => t.year === OKR_YEARS[1])?.target ?? '';
+                    const t2 = kr.yearlyTargets.find((t) => t.year === OKR_YEARS[2])?.target ?? '';
+                    return (
+                      <tr key={`${okr.id}-${kr.id}`} className="border-b border-gray-100 last:border-0">
+                        <td className="px-3 py-2 text-gray-700 align-top">{idx === 0 ? okr.objective : ''}</td>
+                        <td className="px-3 py-2 text-gray-700 align-top">{kr.title}</td>
+                        <td className="px-3 py-2 text-gray-600 align-top">{kr.baseline || '—'}</td>
+                        <td className="px-3 py-2 text-gray-600 align-top">{t0 || '—'}</td>
+                        <td className="px-3 py-2 text-gray-600 align-top">{t1 || '—'}</td>
+                        <td className="px-3 py-2 text-gray-600 align-top">{t2 || '—'}</td>
+                        <td className="px-3 py-2 text-gray-600 align-top">{kr.notes || '—'}</td>
+                        <td className="px-3 py-2 text-gray-700 align-top">{idx === 0 ? `${okr.progress ?? 0}%` : ''}</td>
+                        <td className="px-3 py-2 text-gray-700 align-top">{idx === 0 ? (okr.targetDate || '—') : ''}</td>
+                        {isAdmin && (
+                          <td className="px-3 py-2 align-top">
+                            {idx === 0 && (
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setEditOKRTarget(okr.id)} className="text-gray-300 hover:text-gray-600 p-1">
+                                  <Pencil size={12} />
+                                </button>
+                                <button onClick={() => setDeleteOKRTarget(okr.id)} className="text-gray-300 hover:text-red-500 p-1">
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  });
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       <Card className="mb-6">
         <MemberList
           assignments={du.assignments}
@@ -78,6 +184,49 @@ export function DeliveryUnitPage() {
           onUpdate={(personId, role, patch) => updateDUAssignment(du.id, personId, role, patch)}
         />
       </Card>
+
+      {/* Open Positions */}
+      {isAdmin && (
+        <Card className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-700 flex items-center gap-2">
+              <Briefcase size={16} /> Open Positions
+              <span className="text-xs text-gray-400 font-normal">({(du.openPositions ?? []).length})</span>
+            </h2>
+            <Button size="sm" onClick={() => setShowCreateOpenPosition(true)}>
+              <Plus size={13} /> Add Open Position
+            </Button>
+          </div>
+          {(du.openPositions ?? []).length === 0 ? (
+            <p className="text-sm text-gray-500">No open positions yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {(du.openPositions ?? []).map((pos) => (
+                <div
+                  key={pos.id}
+                  className="rounded-lg p-4 flex items-start gap-4 bg-amber-50 border border-amber-200 relative group"
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-amber-700 text-sm font-semibold shrink-0 bg-amber-100 ring-2 ring-amber-100">
+                    ?
+                  </div>
+
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <p className="text-sm font-semibold text-amber-800 truncate">{pos.title}</p>
+                    <p className="text-xs text-amber-700/80">Priority: {pos.priority} · Allocation: {pos.allocationPercentage ?? 100}%</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleteOpenPositionTarget(pos.id)}
+                    className="opacity-0 group-hover:opacity-100 text-amber-400 hover:text-red-500 transition-all shrink-0 mt-0.5"
+                    title="Remove open position"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Release Trains */}
       <div className="flex items-center justify-between mb-3">
@@ -192,7 +341,262 @@ export function DeliveryUnitPage() {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
+
+      {showCreateOKR && (
+        <OkrFormModal
+          title="New OKR"
+          onClose={() => setShowCreateOKR(false)}
+          onSubmit={(okr) => {
+            addDeliveryUnitOKR(du.id, okr);
+            setShowCreateOKR(false);
+          }}
+        />
+      )}
+
+      {editOKRTarget && editOKR && (
+        <OkrFormModal
+          title="Edit OKR"
+          initialObjective={editOKR.objective}
+          initialKeyResults={editOKR.keyResults}
+          initialProgress={editOKR.progress ?? 0}
+          initialTargetDate={editOKR.targetDate ?? ''}
+          onClose={() => setEditOKRTarget(null)}
+          onSubmit={(okr) => {
+            updateDeliveryUnitOKR(du.id, editOKRTarget, okr);
+            setEditOKRTarget(null);
+          }}
+        />
+      )}
+
+      {deleteOKRTarget && deleteOKR && (
+        <ConfirmDialog
+          title="Delete OKR"
+          message={`Delete objective "${deleteOKR.objective}"?`}
+          onConfirm={() => {
+            deleteDeliveryUnitOKR(du.id, deleteOKRTarget);
+            setDeleteOKRTarget(null);
+          }}
+          onCancel={() => setDeleteOKRTarget(null)}
+        />
+      )}
+
+      {showCreateOpenPosition && (
+        <OpenPositionFormModal
+          title="Add Open Position"
+          onClose={() => setShowCreateOpenPosition(false)}
+          onSubmit={(title, priority, allocation) => {
+            addDUOpenPosition(du.id, { title, priority, allocationPercentage: allocation });
+            setShowCreateOpenPosition(false);
+          }}
+        />
+      )}
+
+      {deleteOpenPositionTarget && (
+        <ConfirmDialog
+          title="Delete Open Position"
+          message="Remove this open position placeholder?"
+          onConfirm={() => {
+            removeDUOpenPosition(du.id, deleteOpenPositionTarget);
+            setDeleteOpenPositionTarget(null);
+          }}
+          onCancel={() => setDeleteOpenPositionTarget(null)}
+        />
+      )}
     </Layout>
+  );
+}
+
+function OkrFormModal({
+  title,
+  initialObjective = '',
+  initialKeyResults = [],
+  initialProgress = 0,
+  initialTargetDate = '',
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  initialObjective?: string;
+  initialKeyResults?: DeliveryUnitKeyResult[];
+  initialProgress?: number;
+  initialTargetDate?: string;
+  onClose: () => void;
+  onSubmit: (okr: Omit<DeliveryUnitOKR, 'id'>) => void;
+}) {
+  const [objective, setObjective] = useState(initialObjective);
+  const [keyResults, setKeyResults] = useState<DeliveryUnitKeyResult[]>(
+    initialKeyResults.length > 0
+      ? initialKeyResults
+      : [{
+          id: crypto.randomUUID(),
+          title: '',
+          baseline: '',
+          notes: '',
+          yearlyTargets: OKR_YEARS.map((year) => ({ year, target: '' })),
+        }],
+  );
+  const [progress, setProgress] = useState(initialProgress);
+  const [targetDate, setTargetDate] = useState(initialTargetDate);
+  const [error, setError] = useState('');
+
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={() => {
+        if (!objective.trim()) {
+          setError('Objective is required.');
+          return;
+        }
+        const cleanedKeyResults = keyResults
+          .map((kr) => ({
+            ...kr,
+            title: kr.title.trim(),
+            baseline: kr.baseline?.trim() ?? '',
+            notes: kr.notes?.trim() ?? '',
+            yearlyTargets: OKR_YEARS.map((year) => ({
+              year,
+              target: kr.yearlyTargets.find((yt) => yt.year === year)?.target?.trim() ?? '',
+            })),
+          }))
+          .filter((kr) => kr.title.length > 0);
+
+        if (cleanedKeyResults.length === 0) {
+          setError('Add at least one key result.');
+          return;
+        }
+        onSubmit({
+          objective: objective.trim(),
+          keyResults: cleanedKeyResults,
+          progress: Number.isFinite(progress) ? Math.min(100, Math.max(0, progress)) : 0,
+          targetDate: targetDate || undefined,
+        });
+      }}>Save</Button></>}
+    >
+      <div className="space-y-4">
+        <Input label="Objective" value={objective} onChange={(e) => { setObjective(e.target.value); setError(''); }} error={error} placeholder="e.g. Improve customer onboarding conversion" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold text-gray-600">Key Results</label>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setKeyResults((prev) => [
+                ...prev,
+                {
+                  id: crypto.randomUUID(),
+                  title: '',
+                  baseline: '',
+                  notes: '',
+                  yearlyTargets: OKR_YEARS.map((year) => ({ year, target: '' })),
+                },
+              ])}
+            >
+              <Plus size={13} /> Add KR
+            </Button>
+          </div>
+
+          {keyResults.map((kr, idx) => (
+            <div key={kr.id} className="rounded border border-gray-200 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-gray-500">KR {idx + 1}</p>
+                {keyResults.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setKeyResults((prev) => prev.filter((x) => x.id !== kr.id))}
+                    className="text-gray-300 hover:text-red-500"
+                    aria-label="Remove key result"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
+
+              <Input
+                label="Title"
+                value={kr.title}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setKeyResults((prev) => prev.map((x) => (x.id === kr.id ? { ...x, title: value } : x)));
+                  setError('');
+                }}
+                placeholder="e.g. Increase conversion by 15%"
+              />
+
+              <Input
+                label="Baseline"
+                value={kr.baseline ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setKeyResults((prev) => prev.map((x) => (x.id === kr.id ? { ...x, baseline: value } : x)));
+                }}
+                placeholder="e.g. Current conversion: 22%"
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {OKR_YEARS.map((year) => (
+                  <div key={`${kr.id}-${year}`}>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Target {year}</label>
+                    <input
+                      value={kr.yearlyTargets.find((yt) => yt.year === year)?.target ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setKeyResults((prev) => prev.map((x) =>
+                          x.id !== kr.id
+                            ? x
+                            : {
+                                ...x,
+                                yearlyTargets: OKR_YEARS.map((y) => ({
+                                  year: y,
+                                  target: y === year
+                                    ? value
+                                    : (x.yearlyTargets.find((yt) => yt.year === y)?.target ?? ''),
+                                })),
+                              }
+                        ));
+                      }}
+                      className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. 10%"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <TextArea
+                label="Notes"
+                value={kr.notes ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setKeyResults((prev) => prev.map((x) => (x.id === kr.id ? { ...x, notes: value } : x)));
+                }}
+                rows={2}
+                placeholder="Context, assumptions, dependencies..."
+              />
+            </div>
+          ))}
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Progress (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={progress}
+            onChange={(e) => setProgress(Number(e.target.value))}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Target Date</label>
+          <input
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -205,6 +609,77 @@ function RtFormModal({ title, initialName = '', initialDescription = '', onClose
       <div className="space-y-4">
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} error={error} placeholder="e.g. ART Phoenix" />
         <TextArea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Optional…" />
+      </div>
+    </Modal>
+  );
+}
+
+function OpenPositionFormModal({
+  title,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  onClose: () => void;
+  onSubmit: (title: string, priority: 'Low' | 'Medium' | 'High', allocation: number) => void;
+}) {
+  const [posTitle, setPosTitle] = useState('');
+  const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [allocation, setAllocation] = useState(100);
+  const [error, setError] = useState('');
+
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (!posTitle.trim()) {
+                setError('Title is required.');
+                return;
+              }
+              onSubmit(posTitle.trim(), priority, allocation);
+            }}
+          >
+            Add
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          label="Role Title"
+          value={posTitle}
+          onChange={(e) => setPosTitle(e.target.value)}
+          error={error}
+          placeholder="e.g. Senior Cloud Architect"
+        />
+        <Select
+          label="Priority"
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as 'Low' | 'Medium' | 'High')}
+          options={[
+            { label: 'Low', value: 'Low' },
+            { label: 'Medium', value: 'Medium' },
+            { label: 'High', value: 'High' },
+          ]}
+        />
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Allocation (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={allocation}
+            onChange={(e) => setAllocation(Number(e.target.value))}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
       </div>
     </Modal>
   );

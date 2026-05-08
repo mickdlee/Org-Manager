@@ -13,6 +13,8 @@ export function loadData(): AppData {
     const raw = localStorage.getItem(DATA_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppData;
+      const currentYear = new Date().getFullYear();
+      const defaultYears = [currentYear, currentYear + 1, currentYear + 2];
       // Migrate: seed roleConfig if absent (existing data from before this feature)
       if (!parsed.roleConfig) {
         parsed.roleConfig = {
@@ -59,10 +61,41 @@ export function loadData(): AppData {
 
       parsed.deliveryUnits = parsed.deliveryUnits.map((du) => ({
         ...du,
+        okrs: (du.okrs ?? []).map((okr) => ({
+          ...okr,
+          keyResults: (okr.keyResults ?? []).map((kr, idx) => {
+            if (typeof kr === 'string') {
+              return {
+                id: `kr-${idx + 1}`,
+                title: kr,
+                baseline: '',
+                notes: '',
+                yearlyTargets: defaultYears.map((year) => ({ year, target: '' })),
+              };
+            }
+
+            const targetsByYear = new Map<number, string>(
+              (kr.yearlyTargets ?? []).map((t) => [t.year, t.target ?? '']),
+            );
+
+            return {
+              id: kr.id ?? `kr-${idx + 1}`,
+              title: kr.title ?? '',
+              baseline: kr.baseline ?? '',
+              notes: kr.notes ?? '',
+              yearlyTargets: defaultYears.map((year) => ({
+                year,
+                target: targetsByYear.get(year) ?? '',
+              })),
+            };
+          }),
+        })),
         assignments: withAssignmentFlags(du.assignments),
+        openPositions: du.openPositions ?? [],
         releaseTrains: du.releaseTrains.map((rt) => ({
           ...rt,
           assignments: withAssignmentFlags(rt.assignments),
+          openPositions: rt.openPositions ?? [],
           squads: rt.squads.map((sq) => ({
             ...sq,
             assignments: withAssignmentFlags(sq.assignments),

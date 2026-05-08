@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
-import { Shield, Plus, Pencil, Trash2, Users, DollarSign, ChevronDown } from 'lucide-react';
+import { Shield, Plus, Pencil, Trash2, Users, DollarSign, ChevronDown, Briefcase } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
-import { Input, TextArea } from '../components/ui/Input';
+import { Input, TextArea, Select } from '../components/ui/Input';
 import { MemberList } from '../components/members/MemberList';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
@@ -15,7 +15,7 @@ import type { AnyRole } from '../types';
 
 export function ReleaseTrainPage() {
   const { duId, rtId } = useParams<{ duId: string; rtId: string }>();
-  const { data, addSquad, updateSquad, deleteSquad, addAssignmentToRT, removeAssignmentFromRT, updateRTAssignment } = useAppStore();
+  const { data, addSquad, updateSquad, deleteSquad, addAssignmentToRT, removeAssignmentFromRT, updateRTAssignment, addRTOpenPosition, removeRTOpenPosition } = useAppStore();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -27,6 +27,8 @@ export function ReleaseTrainPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [showCreateOpenPosition, setShowCreateOpenPosition] = useState(false);
+  const [deleteOpenPositionTarget, setDeleteOpenPositionTarget] = useState<string | null>(null);
 
   const editSq = rt.squads.find((s) => s.id === editTarget);
   const deleteSq = rt.squads.find((s) => s.id === deleteTarget);
@@ -70,6 +72,49 @@ export function ReleaseTrainPage() {
           onUpdate={(personId, role, patch) => updateRTAssignment(du.id, rt.id, personId, role, patch)}
         />
       </Card>
+
+      {/* Open Positions */}
+      {isAdmin && (
+        <Card className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-700 flex items-center gap-2">
+              <Briefcase size={16} /> Open Positions
+              <span className="text-xs text-gray-400 font-normal">({(rt.openPositions ?? []).length})</span>
+            </h2>
+            <Button size="sm" onClick={() => setShowCreateOpenPosition(true)}>
+              <Plus size={13} /> Add Open Position
+            </Button>
+          </div>
+          {(rt.openPositions ?? []).length === 0 ? (
+            <p className="text-sm text-gray-500">No open positions yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {(rt.openPositions ?? []).map((pos) => (
+                <div
+                  key={pos.id}
+                  className="rounded-lg p-4 flex items-start gap-4 bg-amber-50 border border-amber-200 relative group"
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-amber-700 text-sm font-semibold shrink-0 bg-amber-100 ring-2 ring-amber-100">
+                    ?
+                  </div>
+
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <p className="text-sm font-semibold text-amber-800 truncate">{pos.title}</p>
+                    <p className="text-xs text-amber-700/80">Priority: {pos.priority} · Allocation: {pos.allocationPercentage ?? 100}%</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleteOpenPositionTarget(pos.id)}
+                    className="opacity-0 group-hover:opacity-100 text-amber-400 hover:text-red-500 transition-all shrink-0 mt-0.5"
+                    title="Remove open position"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Squads */}
       <div className="flex items-center justify-between mb-3">
@@ -192,6 +237,29 @@ export function ReleaseTrainPage() {
       {deleteTarget && deleteSq && (
         <ConfirmDialog title="Delete Squad" message={`Delete "${deleteSq.name}"?`} onConfirm={() => { deleteSquad(du.id, rt.id, deleteTarget); setDeleteTarget(null); }} onCancel={() => setDeleteTarget(null)} />
       )}
+
+      {showCreateOpenPosition && (
+        <OpenPositionFormModal
+          title="Add Open Position"
+          onClose={() => setShowCreateOpenPosition(false)}
+          onSubmit={(title, priority, allocation) => {
+            addRTOpenPosition(du.id, rt.id, { title, priority, allocationPercentage: allocation });
+            setShowCreateOpenPosition(false);
+          }}
+        />
+      )}
+
+      {deleteOpenPositionTarget && (
+        <ConfirmDialog
+          title="Delete Open Position"
+          message="Remove this open position placeholder?"
+          onConfirm={() => {
+            removeRTOpenPosition(du.id, rt.id, deleteOpenPositionTarget);
+            setDeleteOpenPositionTarget(null);
+          }}
+          onCancel={() => setDeleteOpenPositionTarget(null)}
+        />
+      )}
     </Layout>
   );
 }
@@ -205,6 +273,77 @@ function SqFormModal({ title, initialName = '', initialDescription = '', onClose
       <div className="space-y-4">
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} error={error} placeholder="e.g. Payments Squad" />
         <TextArea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Optional…" />
+      </div>
+    </Modal>
+  );
+}
+
+function OpenPositionFormModal({
+  title,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  onClose: () => void;
+  onSubmit: (title: string, priority: 'Low' | 'Medium' | 'High', allocation: number) => void;
+}) {
+  const [posTitle, setPosTitle] = useState('');
+  const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [allocation, setAllocation] = useState(100);
+  const [error, setError] = useState('');
+
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (!posTitle.trim()) {
+                setError('Title is required.');
+                return;
+              }
+              onSubmit(posTitle.trim(), priority, allocation);
+            }}
+          >
+            Add
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          label="Role Title"
+          value={posTitle}
+          onChange={(e) => setPosTitle(e.target.value)}
+          error={error}
+          placeholder="e.g. Senior Cloud Architect"
+        />
+        <Select
+          label="Priority"
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as 'Low' | 'Medium' | 'High')}
+          options={[
+            { label: 'Low', value: 'Low' },
+            { label: 'Medium', value: 'Medium' },
+            { label: 'High', value: 'High' },
+          ]}
+        />
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Allocation (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={allocation}
+            onChange={(e) => setAllocation(Number(e.target.value))}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
       </div>
     </Modal>
   );

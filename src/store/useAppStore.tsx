@@ -5,7 +5,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate } from '../types';
+import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate, DeliveryUnitOKR, OpenPosition } from '../types';
 import { loadData, saveData, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
 
 interface AppStoreContextValue {
@@ -18,6 +18,9 @@ interface AppStoreContextValue {
   addDeliveryUnit: (du: Omit<DeliveryUnit, 'id' | 'assignments' | 'releaseTrains'>) => DeliveryUnit;
   updateDeliveryUnit: (id: string, du: Partial<Pick<DeliveryUnit, 'name' | 'type' | 'description'>>) => void;
   deleteDeliveryUnit: (id: string) => void;
+  addDeliveryUnitOKR: (duId: string, okr: Omit<DeliveryUnitOKR, 'id'>) => DeliveryUnitOKR;
+  updateDeliveryUnitOKR: (duId: string, okrId: string, patch: Partial<Omit<DeliveryUnitOKR, 'id'>>) => void;
+  deleteDeliveryUnitOKR: (duId: string, okrId: string) => void;
   // Release Trains
   addReleaseTrain: (duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>) => ReleaseTrain;
   updateReleaseTrain: (duId: string, rtId: string, rt: Partial<Pick<ReleaseTrain, 'name' | 'description'>>) => void;
@@ -49,6 +52,10 @@ interface AppStoreContextValue {
   // Onboarding
   updateSquadOnboarding: (duId: string, rtId: string, sqId: string, onboarding: SquadOnboarding) => void;
   updateDeliveryUnitOnboarding: (duId: string, onboarding: DeliveryUnitOnboarding) => void;
+  addDUOpenPosition: (duId: string, position: Omit<OpenPosition, 'id'>) => void;
+  removeDUOpenPosition: (duId: string, positionId: string) => void;
+  addRTOpenPosition: (duId: string, rtId: string, position: Omit<OpenPosition, 'id'>) => void;
+  removeRTOpenPosition: (duId: string, rtId: string, positionId: string) => void;
   // Squad Templates
   addSquadTemplate: (t: Omit<SquadTemplate, 'id'>) => SquadTemplate;
   updateSquadTemplate: (id: string, t: Partial<Omit<SquadTemplate, 'id'>>) => void;
@@ -108,7 +115,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   // ── Delivery Units ──────────────────────────────────────────────────────────
   const addDeliveryUnit = useCallback((du: Omit<DeliveryUnit, 'id' | 'assignments' | 'releaseTrains'>): DeliveryUnit => {
-    const newDu: DeliveryUnit = { id: crypto.randomUUID(), assignments: [], releaseTrains: [], ...du };
+    const newDu: DeliveryUnit = { id: crypto.randomUUID(), assignments: [], releaseTrains: [], okrs: [], ...du };
     setData((prev) => {
       const next = { ...prev, deliveryUnits: [...prev.deliveryUnits, newDu] };
       saveData(next);
@@ -128,6 +135,57 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const deleteDeliveryUnit = useCallback((id: string) => {
     setData((prev) => {
       const next = { ...prev, deliveryUnits: prev.deliveryUnits.filter((x) => x.id !== id) };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const addDeliveryUnitOKR = useCallback((duId: string, okr: Omit<DeliveryUnitOKR, 'id'>): DeliveryUnitOKR => {
+    const newOKR: DeliveryUnitOKR = { id: crypto.randomUUID(), ...okr };
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId ? { ...du, okrs: [...(du.okrs ?? []), newOKR] } : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+    return newOKR;
+  }, []);
+
+  const updateDeliveryUnitOKR = useCallback((duId: string, okrId: string, patch: Partial<Omit<DeliveryUnitOKR, 'id'>>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                okrs: (du.okrs ?? []).map((okr) => (okr.id === okrId ? { ...okr, ...patch } : okr)),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deleteDeliveryUnitOKR = useCallback((duId: string, okrId: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                okrs: (du.okrs ?? []).filter((okr) => okr.id !== okrId),
+              }
+            : du,
+        ),
+      };
       saveData(next);
       return next;
     });
@@ -516,6 +574,82 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addDUOpenPosition = useCallback((duId: string, position: Omit<OpenPosition, 'id'>) => {
+    const pos: OpenPosition = { id: crypto.randomUUID(), ...position };
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : {
+            ...du,
+            openPositions: [...(du.openPositions ?? []), pos],
+          }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const removeDUOpenPosition = useCallback((duId: string, positionId: string) => {
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : {
+            ...du,
+            openPositions: (du.openPositions ?? []).filter((p) => p.id !== positionId),
+          }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const addRTOpenPosition = useCallback((duId: string, rtId: string, position: Omit<OpenPosition, 'id'>) => {
+    const pos: OpenPosition = { id: crypto.randomUUID(), ...position };
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : {
+            ...du,
+            releaseTrains: du.releaseTrains.map((rt) =>
+              rt.id !== rtId ? rt : {
+                ...rt,
+                openPositions: [...(rt.openPositions ?? []), pos],
+              }
+            ),
+          }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const removeRTOpenPosition = useCallback((duId: string, rtId: string, positionId: string) => {
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id !== duId ? du : {
+            ...du,
+            releaseTrains: du.releaseTrains.map((rt) =>
+              rt.id !== rtId ? rt : {
+                ...rt,
+                openPositions: (rt.openPositions ?? []).filter((p) => p.id !== positionId),
+              }
+            ),
+          }
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   // ── Squad Templates ─────────────────────────────────────────────────────────
   const addSquadTemplate = useCallback((t: Omit<SquadTemplate, 'id'>): SquadTemplate => {
     const tmpl: SquadTemplate = { id: crypto.randomUUID(), ...t };
@@ -604,6 +738,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         data,
         addPerson, updatePerson, deletePerson,
         addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit,
+        addDeliveryUnitOKR, updateDeliveryUnitOKR, deleteDeliveryUnitOKR,
         addReleaseTrain, updateReleaseTrain, deleteReleaseTrain,
         addSquad, updateSquad, deleteSquad,
         addAssignmentToDU, removeAssignmentFromDU, updateDUAssignment,
@@ -611,6 +746,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment,
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
         addRole, removeRole, resetToSampleData, updateSquadOnboarding, updateDeliveryUnitOnboarding,
+        addDUOpenPosition, removeDUOpenPosition, addRTOpenPosition, removeRTOpenPosition,
         resetToLargeSampleData,
         addSquadTemplate, updateSquadTemplate, deleteSquadTemplate, applySquadTemplate,
         setShowFinancials,

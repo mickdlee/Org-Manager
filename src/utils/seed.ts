@@ -2,6 +2,26 @@ import type { AppData } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
 
 export function generateSeedData(): AppData {
+  const baseYear = new Date().getFullYear();
+  const nextThreeYears = [baseYear, baseYear + 1, baseYear + 2];
+
+  const buildKR = (
+    id: string,
+    title: string,
+    baseline: string,
+    notes: string,
+    targets: [string, string, string],
+  ) => ({
+    id,
+    title,
+    baseline,
+    notes,
+    yearlyTargets: nextThreeYears.map((year, idx) => ({
+      year,
+      target: targets[idx],
+    })),
+  });
+
   // ── People ──────────────────────────────────────────────────────────────────
   const people = [
     { id: 'p01', name: 'Sarah Mitchell',   email: 'sarah.mitchell@example.com', photoUrl: 'https://i.pravatar.cc/160?img=1', dayRate: 1200 },
@@ -111,7 +131,13 @@ export function generateSeedData(): AppData {
             ],
           },
         ],
+        openPositions: [
+          { id: 'dup01-rt01-1', title: 'Senior Cloud Architect', priority: 'High', allocationPercentage: 100 },
+        ],
       },
+    ],
+    openPositions: [
+      { id: 'dup01-1', title: 'Platform Lead', priority: 'Medium', allocationPercentage: 100 },
     ],
     onboarding: {
       overallHealthStatus: 'Healthy',
@@ -119,6 +145,29 @@ export function generateSeedData(): AppData {
       totalOpenRoles: 1,
       totalPendingOffboarding: 2,
     },
+    okrs: [
+      {
+        id: 'okr-du01-1',
+        objective: 'Improve retail payments reliability',
+        keyResults: [
+          buildKR('kr-du01-1-1', 'Reduce payment incident rate', 'Current incident rate: 2.1%', 'Focus on top 3 recurring root causes.', ['10%', '20%', '30%']),
+          buildKR('kr-du01-1-2', 'Achieve monthly availability', 'Current availability: 99.82%', 'Requires resilience work across card and clearing paths.', ['99.90%', '99.93%', '99.95%']),
+          buildKR('kr-du01-1-3', 'Cut mean time to recovery', 'Current MTTR: 42 min', 'Implement playbooks and auto-remediation.', ['35 min', '25 min', '20 min']),
+        ],
+        progress: 45,
+        targetDate: '2026-09-30',
+      },
+      {
+        id: 'okr-du01-2',
+        objective: 'Increase engineering throughput',
+        keyResults: [
+          buildKR('kr-du01-2-1', 'Reduce lead time for change', 'Current lead time: 9.6 days', 'Prioritize trunk-based flow and test stability.', ['10%', '18%', '25%']),
+          buildKR('kr-du01-2-2', 'Automate release checks', 'Current automation coverage: 22%', 'Expand quality gates in CI pipelines.', ['35%', '50%', '60%']),
+        ],
+        progress: 35,
+        targetDate: '2026-12-31',
+      },
+    ],
   };
 
   // ── Delivery Unit 2: Customer Banking ──────────────────────────────────────
@@ -169,6 +218,9 @@ export function generateSeedData(): AppData {
             ],
           },
         ],
+        openPositions: [
+          { id: 'dup02-rt03-1', title: 'Payment Systems Lead', priority: 'High', allocationPercentage: 100 },
+        ],
       },
       {
         id: 'rt04',
@@ -207,7 +259,13 @@ export function generateSeedData(): AppData {
             ],
           },
         ],
+        openPositions: [
+          { id: 'dup02-rt04-1', title: 'Frontend Architect', priority: 'Medium', allocationPercentage: 100 },
+        ],
       },
+    ],
+    openPositions: [
+      { id: 'dup02-1', title: 'Product Strategy Lead', priority: 'Low', allocationPercentage: 100 },
     ],
     onboarding: {
       overallHealthStatus: 'Attention',
@@ -215,6 +273,19 @@ export function generateSeedData(): AppData {
       totalOpenRoles: 0,
       totalPendingOffboarding: 1,
     },
+    okrs: [
+      {
+        id: 'okr-du02-1',
+        objective: 'Grow digital lending conversion',
+        keyResults: [
+          buildKR('kr-du02-1-1', 'Increase approved applications', 'Current approval rate: 41%', 'Improve credit model explainability and offer fit.', ['5%', '10%', '15%']),
+          buildKR('kr-du02-1-2', 'Reduce onboarding drop-off', 'Current drop-off: 33%', 'Simplify KYC and reduce document friction.', ['8%', '14%', '20%']),
+          buildKR('kr-du02-1-3', 'Improve NPS', 'Current NPS: 36', 'Address clarity of loan terms and status updates.', ['+3', '+6', '+8']),
+        ],
+        progress: 28,
+        targetDate: '2026-10-31',
+      },
+    ],
   };
 
   return {
@@ -379,6 +450,7 @@ export function generateLargeSeedData(): AppData {
         };
       });
 
+      const rtOpenRolesCount = Math.random() < openRoleRate ? 1 : 0;
       return {
         id: rtId,
         name: rtName,
@@ -388,20 +460,34 @@ export function generateLargeSeedData(): AppData {
           { personId: nextPersonId(), role: 'Product Owner' },
         ],
         squads,
+        openPositions: Array.from({ length: rtOpenRolesCount }, () => ({
+          id: `op${String(openPositionCounter++).padStart(4, '0')}`,
+          title: pick([...DEFAULT_RELEASE_TRAIN_ROLES]),
+          priority: pick(['Low', 'Medium', 'High'] as const),
+          allocationPercentage: pickAllocationPercentage(),
+        })),
       };
     });
 
+    const duOpenRolesCount = Math.random() < openRoleRate ? 1 : 0;
     return {
       id: duId,
       name: duName,
       type: duType,
       description: `${duName} oversees product and platform outcomes across multiple release trains.`,
+      okrs: [],
       assignments: [
         { personId: nextPersonId(), role: 'Delivery Unit Owner' },
         { personId: nextPersonId(), role: 'Chief Product Owner' },
         { personId: nextPersonId(), role: 'Delivery Lead' },
       ],
       releaseTrains,
+      openPositions: Array.from({ length: duOpenRolesCount }, () => ({
+        id: `op${String(openPositionCounter++).padStart(4, '0')}`,
+        title: pick([...DEFAULT_DELIVERY_UNIT_ROLES]),
+        priority: pick(['Low', 'Medium', 'High'] as const),
+        allocationPercentage: pickAllocationPercentage(),
+      })),
       onboarding: {
         overallHealthStatus: pick(['Healthy', 'Attention', 'Critical'] as const),
         totalNewHires: randInt(3, 35),

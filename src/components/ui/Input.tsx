@@ -1,4 +1,4 @@
-import { type InputHTMLAttributes, type TextareaHTMLAttributes, forwardRef } from 'react';
+import { type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes, forwardRef } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -8,6 +8,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
+}
+
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string;
+  error?: string;
+  options: { label: string; value: string }[];
 }
 
 const baseClass =
@@ -34,6 +40,25 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
     <div className="flex flex-col gap-1">
       {label && <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{label}</label>}
       <textarea ref={ref} className={`${baseClass} resize-none ${error ? 'border-red-400' : ''} ${className}`} {...rest} />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+});
+
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { label, error, options, className = '', ...rest },
+  ref,
+) {
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{label}</label>}
+      <select ref={ref} className={`${baseClass} ${error ? 'border-red-400' : ''} ${className}`} {...rest}>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );

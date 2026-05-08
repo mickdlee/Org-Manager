@@ -88,6 +88,27 @@ export interface DeliveryUnitOnboarding {
   totalPendingOffboarding?: number;
 }
 
+export interface KeyResultYearlyTarget {
+  year: number;
+  target: string;
+}
+
+export interface DeliveryUnitKeyResult {
+  id: string;
+  title: string;
+  baseline?: string;
+  notes?: string;
+  yearlyTargets: KeyResultYearlyTarget[];
+}
+
+export interface DeliveryUnitOKR {
+  id: string;
+  objective: string;
+  keyResults: DeliveryUnitKeyResult[];
+  progress?: number;
+  targetDate?: string;
+}
+
 export interface Squad {
   id: string;
   name: string;
@@ -102,6 +123,7 @@ export interface ReleaseTrain {
   description: string;
   assignments: Assignment[];
   squads: Squad[];
+  openPositions?: OpenPosition[];
 }
 
 export interface DeliveryUnit {
@@ -112,6 +134,8 @@ export interface DeliveryUnit {
   assignments: Assignment[];
   releaseTrains: ReleaseTrain[];
   onboarding?: DeliveryUnitOnboarding;
+  okrs?: DeliveryUnitOKR[];
+  openPositions?: OpenPosition[];
 }
 
 export interface SquadTemplateRole {
