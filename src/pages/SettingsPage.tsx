@@ -18,11 +18,34 @@ export function SettingsPage() {
     <Layout title="Settings">
       <div className="max-w-xl space-y-6">
         <SampleDataSection />
+        <FinancialVisibilitySection />
         <SquadTemplatesSection />
         <RoleConfigSection />
         <CreateUserSection createUser={createUser} />
       </div>
     </Layout>
+  );
+}
+
+function FinancialVisibilitySection() {
+  const { data, setShowFinancials } = useAppStore();
+
+  return (
+    <Card>
+      <h2 className="font-semibold text-gray-800 mb-1">Financial Visibility</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Control whether day rates and cost summaries are visible across the app.
+      </p>
+      <label className="flex items-center justify-between rounded border border-gray-200 px-3 py-2">
+        <span className="text-sm text-gray-700">Show financials</span>
+        <input
+          type="checkbox"
+          checked={data.uiSettings.showFinancials}
+          onChange={(e) => setShowFinancials(e.target.checked)}
+          className="h-4 w-4 accent-blue-600"
+        />
+      </label>
+    </Card>
   );
 }
 

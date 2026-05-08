@@ -51,6 +51,7 @@ interface AppStoreContextValue {
   updateSquadTemplate: (id: string, t: Partial<Omit<SquadTemplate, 'id'>>) => void;
   deleteSquadTemplate: (id: string) => void;
   applySquadTemplate: (duId: string, rtId: string, sqId: string, templateId: string) => void;
+  setShowFinancials: (show: boolean) => void;
 }
 
 const AppStoreContext = createContext<AppStoreContextValue | null>(null);
@@ -84,6 +85,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       // Remove all assignments referencing this person across the whole tree
       const removeFrom = (assignments: Assignment[]) => assignments.filter((a) => a.personId !== id);
       const next: AppData = {
+        ...prev,
         roleConfig: prev.roleConfig,
         people: prev.people.filter((p) => p.id !== id),
         deliveryUnits: prev.deliveryUnits.map((du) => ({
@@ -521,6 +523,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setShowFinancials = useCallback((show: boolean) => {
+    setData((prev) => {
+      const next: AppData = {
+        ...prev,
+        uiSettings: {
+          ...prev.uiSettings,
+          showFinancials: show,
+        },
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   // ── Lookup helpers ──────────────────────────────────────────────────────────
   const getPersonById = useCallback((id: string) => data.people.find((p) => p.id === id), [data]);
   const getDeliveryUnitById = useCallback((id: string) => data.deliveryUnits.find((d) => d.id === id), [data]);
@@ -541,6 +557,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         getPersonById, getDeliveryUnitById, getReleaseTrainById, getSquadById,
         addRole, removeRole, resetToSampleData, updateSquadOnboarding, updateDeliveryUnitOnboarding,
         addSquadTemplate, updateSquadTemplate, deleteSquadTemplate, applySquadTemplate,
+        setShowFinancials,
       }}
     >
       {children}

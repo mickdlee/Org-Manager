@@ -21,6 +21,7 @@ export function DeliveryUnitPage() {
 
   const du = data.deliveryUnits.find((d) => d.id === id);
   if (!du) return <Navigate to="/dashboard" replace />;
+  const showFinancials = data.uiSettings.showFinancials;
 
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export function DeliveryUnitPage() {
       {du.description && <p className="text-sm text-gray-500 mb-6">{du.description}</p>}
 
       {/* Cost summary */}
-      {(() => {
+      {showFinancials && (() => {
         const getPerson = (id: string) => data.people.find((p) => p.id === id);
         const daily = duDailyCost(du, getPerson);
         if (!daily) return null;
@@ -71,6 +72,7 @@ export function DeliveryUnitPage() {
           people={data.people}
           availableRoles={data.roleConfig.deliveryUnit as AnyRole[]}
           isAdmin={isAdmin}
+          showFinancials={showFinancials}
           onAdd={(a) => addAssignmentToDU(du.id, a)}
           onRemove={(personId, role) => removeAssignmentFromDU(du.id, personId, role)}
         />
@@ -148,7 +150,7 @@ export function DeliveryUnitPage() {
                   <Briefcase size={11} /> Delivery Readiness Snapshot
                 </span>
               </div>
-              {(() => {
+              {showFinancials && (() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = rtDailyCost(rt, getPerson);
                 return daily > 0 ? (

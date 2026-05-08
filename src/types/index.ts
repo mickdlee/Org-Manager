@@ -132,11 +132,16 @@ export interface SquadTemplate {
   roles: SquadTemplateRole[];
 }
 
+export interface UISettings {
+  showFinancials: boolean;
+}
+
 export interface AppData {
   deliveryUnits: DeliveryUnit[];
   people: Person[];
   roleConfig: RoleConfig;
   squadTemplates: SquadTemplate[];
+  uiSettings: UISettings;
 }
 
 // Auth types

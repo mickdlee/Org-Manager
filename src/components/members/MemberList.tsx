@@ -11,6 +11,7 @@ interface MemberListProps {
   people: Person[];
   availableRoles: AnyRole[];
   isAdmin: boolean;
+  showFinancials?: boolean;
   onAdd: (assignment: Assignment) => void;
   onRemove: (personId: string, role: AnyRole) => void;
 }
@@ -44,7 +45,7 @@ function initials(name: string) {
     .join('') || '?';
 }
 
-export function MemberList({ assignments, people, availableRoles, isAdmin, onAdd, onRemove }: MemberListProps) {
+export function MemberList({ assignments, people, availableRoles, isAdmin, showFinancials = true, onAdd, onRemove }: MemberListProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null);
 
@@ -98,9 +99,11 @@ export function MemberList({ assignments, people, availableRoles, isAdmin, onAdd
                 <div className="flex-1 min-w-0 pt-0.5">
                   <p className="text-base font-semibold text-gray-800 truncate">{person?.name ?? 'Unknown'}</p>
                   <p className="text-xs text-gray-400 truncate mb-2">{person?.email ?? '—'}</p>
-                  <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
-                    {person?.dayRate ? <span>${person.dayRate}/day</span> : <span>—</span>}
-                  </div>
+                  {showFinancials && (
+                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
+                      {person?.dayRate ? <span>${person.dayRate}/day</span> : <span>—</span>}
+                    </div>
+                  )}
                   <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
                 </div>
 

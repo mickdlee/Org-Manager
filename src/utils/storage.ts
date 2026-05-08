@@ -54,6 +54,13 @@ export function loadData(): AppData {
         parsed.squadTemplates = [];
       }
 
+      // Migrate: seed uiSettings if absent
+      if (!parsed.uiSettings) {
+        parsed.uiSettings = { showFinancials: true };
+      } else if (typeof parsed.uiSettings.showFinancials !== 'boolean') {
+        parsed.uiSettings.showFinancials = true;
+      }
+
       return parsed;
     }
   } catch {

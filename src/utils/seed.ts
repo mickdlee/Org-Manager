@@ -250,5 +250,8 @@ export function generateSeedData(): AppData {
       squad: [...DEFAULT_SQUAD_ROLES],
     },
     squadTemplates: [],
+    uiSettings: {
+      showFinancials: true,
+    },
   };
 }

@@ -62,6 +62,7 @@ export function SquadPage() {
   const sq = rt?.squads.find((s) => s.id === sqId);
 
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
+  const showFinancials = data.uiSettings.showFinancials;
 
   const getPersonName = (id: string) => data.people.find((p) => p.id === id)?.name ?? 'Unknown';
   const onboarding = sq.onboarding ?? {
@@ -138,7 +139,7 @@ export function SquadPage() {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              {sq.assignments.length > 0 && (() => {
+              {showFinancials && sq.assignments.length > 0 && (() => {
                 const daily = squadDailyCost(sq, (id) => data.people.find((p) => p.id === id));
                 return (
                   <div className="text-right">
@@ -221,11 +222,13 @@ export function SquadPage() {
                       <p className="text-xs text-gray-400 truncate mb-2">
                         {person?.email ?? '—'}
                       </p>
-                      <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
-                        {person?.dayRate && (
-                          <span>${person.dayRate}/day</span>
-                        )}
-                      </div>
+                      {showFinancials && (
+                        <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
+                          {person?.dayRate && (
+                            <span>${person.dayRate}/day</span>
+                          )}
+                        </div>
+                      )}
                       <Badge color={roleColors[a.role] ?? 'gray'}>{a.role}</Badge>
                       {/* Allocation slider */}
                       <div className="mt-3">

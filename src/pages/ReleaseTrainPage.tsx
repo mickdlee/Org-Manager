@@ -22,6 +22,7 @@ export function ReleaseTrainPage() {
   const du = data.deliveryUnits.find((d) => d.id === duId);
   const rt = du?.releaseTrains.find((r) => r.id === rtId);
   if (!du || !rt) return <Navigate to="/dashboard" replace />;
+  const showFinancials = data.uiSettings.showFinancials;
 
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export function ReleaseTrainPage() {
       {rt.description && <p className="text-sm text-gray-500 mb-6">{rt.description}</p>}
 
       {/* Cost summary */}
-      {(() => {
+      {showFinancials && (() => {
         const getPerson = (id: string) => data.people.find((p) => p.id === id);
         const daily = rtDailyCost(rt, getPerson);
         if (!daily) return null;
@@ -63,6 +64,7 @@ export function ReleaseTrainPage() {
           people={data.people}
           availableRoles={data.roleConfig.releaseTrain as AnyRole[]}
           isAdmin={isAdmin}
+          showFinancials={showFinancials}
           onAdd={(a) => addAssignmentToRT(du.id, rt.id, a)}
           onRemove={(personId, role) => removeAssignmentFromRT(du.id, rt.id, personId, role)}
         />
@@ -106,7 +108,7 @@ export function ReleaseTrainPage() {
               <div className="text-xs text-gray-400 mb-3 flex items-center gap-1">
                 <Users size={11} />{sq.assignments.length} member{sq.assignments.length !== 1 ? 's' : ''}
               </div>
-              {(() => {
+              {showFinancials && (() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = squadDailyCost(sq, getPerson);
                 return daily > 0 ? (

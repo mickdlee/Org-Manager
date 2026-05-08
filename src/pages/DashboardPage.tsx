@@ -16,6 +16,7 @@ export function DashboardPage() {
   const { data, addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit } = useAppStore();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const showFinancials = data.uiSettings.showFinancials;
 
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -116,7 +117,7 @@ export function DashboardPage() {
                   <Briefcase size={11} /> Health: {health}
                 </span>
               </div>
-              {(() => {
+              {showFinancials && (() => {
                 const getPerson = (id: string) => data.people.find((p) => p.id === id);
                 const daily = duDailyCost(du, getPerson);
                 return daily > 0 ? (

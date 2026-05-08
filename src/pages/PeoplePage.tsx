@@ -14,6 +14,7 @@ import { personTotalAllocationPercent, personAllocationBreakdown } from '../util
 export function PeoplePage() {
   const { data, addPerson, updatePerson, deletePerson } = useAppStore();
   const { isAdmin } = useAuth();
+  const showFinancials = data.uiSettings.showFinancials;
 
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -61,7 +62,7 @@ export function PeoplePage() {
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Photo</th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Day Rate ($)</th>
+                {showFinancials && <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Day Rate ($)</th>}
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Total Team Allocation</th>
                 {isAdmin && <th className="px-4 py-3 w-20" />}
               </tr>
@@ -88,9 +89,11 @@ export function PeoplePage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {p.dayRate ? `$${p.dayRate}` : '—'}
-                  </td>
+                  {showFinancials && (
+                    <td className="px-4 py-3 text-gray-600">
+                      {p.dayRate ? `$${p.dayRate}` : '—'}
+                    </td>
+                  )}
                   <td className={`px-4 py-3 font-semibold ${isOverAllocated ? 'text-red-700' : 'text-gray-700'}`}>
                     <div className="relative inline-block group">
                       <span className="cursor-default underline decoration-dotted decoration-gray-400">{totalAllocation}%</span>
@@ -138,6 +141,7 @@ export function PeoplePage() {
       {showCreate && (
         <PersonFormModal
           title="Add Person"
+          showFinancials={showFinancials}
           onClose={() => setShowCreate(false)}
           onSubmit={(name, email, photoUrl, dayRate) => { addPerson({ name, email, photoUrl, dayRate }); setShowCreate(false); }}
         />
@@ -149,6 +153,7 @@ export function PeoplePage() {
           initialEmail={editPerson.email}
           initialPhotoUrl={editPerson.photoUrl}
           initialDayRate={editPerson.dayRate}
+          showFinancials={showFinancials}
           onClose={() => setEditTarget(null)}
           onSubmit={(name, email, photoUrl, dayRate) => { updatePerson(editTarget, { name, email, photoUrl, dayRate }); setEditTarget(null); }}
         />
@@ -171,11 +176,12 @@ interface PersonFormModalProps {
   initialEmail?: string;
   initialPhotoUrl?: string;
   initialDayRate?: number;
+  showFinancials: boolean;
   onClose: () => void;
   onSubmit: (name: string, email: string, photoUrl?: string, dayRate?: number) => void;
 }
 
-function PersonFormModal({ title, initialName = '', initialEmail = '', initialPhotoUrl = '', initialDayRate, onClose, onSubmit }: PersonFormModalProps) {
+function PersonFormModal({ title, initialName = '', initialEmail = '', initialPhotoUrl = '', initialDayRate, showFinancials, onClose, onSubmit }: PersonFormModalProps) {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
@@ -188,13 +194,13 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialPh
     if (!email.trim()) errs.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email.';
     if (photoUrl.trim() && !/^https?:\/\//i.test(photoUrl.trim())) errs.photoUrl = 'Photo URL must start with http:// or https://';
-    if (dayRate && (isNaN(Number(dayRate)) || Number(dayRate) < 0)) errs.dayRate = 'Enter a valid day rate.';
+    if (showFinancials && dayRate && (isNaN(Number(dayRate)) || Number(dayRate) < 0)) errs.dayRate = 'Enter a valid day rate.';
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onSubmit(
       name.trim(),
       email.trim().toLowerCase(),
       photoUrl.trim() || undefined,
-      dayRate ? Number(dayRate) : undefined,
+      showFinancials ? (dayRate ? Number(dayRate) : undefined) : initialDayRate,
     );
   };
 
@@ -208,7 +214,9 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialPh
         <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} placeholder="e.g. Jane Smith" />
         <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="e.g. jane@example.com" />
         <Input label="Photo URL" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} error={errors.photoUrl} placeholder="https://example.com/photo.jpg" />
-        <Input label="Day Rate ($)" type="number" value={dayRate} onChange={(e) => setDayRate(e.target.value)} error={errors.dayRate} placeholder="e.g. 650" min="0" />
+        {showFinancials && (
+          <Input label="Day Rate ($)" type="number" value={dayRate} onChange={(e) => setDayRate(e.target.value)} error={errors.dayRate} placeholder="e.g. 650" min="0" />
+        )}
       </div>
     </Modal>
   );
