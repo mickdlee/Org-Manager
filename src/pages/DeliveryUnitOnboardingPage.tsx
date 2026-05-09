@@ -3,6 +3,7 @@ import { Users, Briefcase, UserMinus, TrendingUp } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
+import { canManageDeliveryUnit } from '../utils/permissions';
 import type { DeliveryUnitOnboarding } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -27,10 +28,11 @@ function emptyOnboarding(): DeliveryUnitOnboarding {
 export function DeliveryUnitOnboardingPage() {
   const { duId } = useParams<{ duId: string }>();
   const { data, updateDeliveryUnitOnboarding } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { session } = useAuth();
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
   if (!du) return <Navigate to="/dashboard" replace />;
+  const canEditDU = canManageDeliveryUnit(data, session, du.id);
 
   const ob: DeliveryUnitOnboarding = du.onboarding ?? emptyOnboarding();
   const healthMeta = HEALTH_COLORS[ob.overallHealthStatus ?? 'Healthy'];
@@ -209,7 +211,7 @@ export function DeliveryUnitOnboardingPage() {
         )}
 
         {/* ── Admin settings ──────────────────────────────────────────────────── */}
-        {isAdmin && (
+        {canEditDU && (
           <section className="bg-white border border-gray-200 rounded-lg p-6">
             <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4">Onboarding Settings</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

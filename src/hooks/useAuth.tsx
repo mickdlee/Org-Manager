@@ -14,6 +14,7 @@ export interface ManagedUser {
   id: string;
   username: string;
   role: UserRole;
+  salaryId?: string;
 }
 
 interface AuthContextValue {
@@ -22,10 +23,11 @@ interface AuthContextValue {
   users: ManagedUser[];
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  createUser: (username: string, password: string, role: UserRole) => Promise<void>;
-  updateUser: (id: string, patch: { username?: string; role?: UserRole; password?: string }) => Promise<void>;
+  createUser: (username: string, password: string, role: UserRole, salaryId?: string) => Promise<void>;
+  updateUser: (id: string, patch: { username?: string; role?: UserRole; password?: string; salaryId?: string }) => Promise<void>;
   deleteUser: (id: string) => void;
   isAdmin: boolean;
+  isOrgManager: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -51,7 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasUsers = users.length > 0;
   const isAdmin = session?.role === 'admin';
-  const managedUsers: ManagedUser[] = users.map(({ id, username, role }) => ({ id, username, role }));
+  const isOrgManager = session?.role === 'orgManager';
+  const managedUsers: ManagedUser[] = users.map(({ id, username, role, salaryId }) => ({ id, username, role, salaryId }));
+
+  const normalizeSalaryId = (salaryId?: string): string | undefined => {
+    const trimmed = salaryId?.trim() ?? '';
+    return trimmed ? trimmed : undefined;
+  };
 
   const login = useCallback(
     async (username: string, password: string): Promise<boolean> => {
@@ -60,7 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         (u) => u.username.toLowerCase() === username.toLowerCase() && u.passwordHash === hash,
       );
       if (!user) return false;
-      const s: Session = { userId: user.id, username: user.username, role: user.role };
+      const s: Session = {
+        userId: user.id,
+        username: user.username,
+        role: user.role,
+        salaryId: normalizeSalaryId(user.salaryId),
+      };
       saveSession(s);
       setSession(s);
       return true;
@@ -74,8 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createUser = useCallback(
-    async (username: string, password: string, role: UserRole): Promise<void> => {
+    async (username: string, password: string, role: UserRole, salaryId?: string): Promise<void> => {
       const normalizedUsername = username.trim();
+      const normalizedSalaryId = normalizeSalaryId(salaryId);
       if (!normalizedUsername) {
         throw new Error('Username is required.');
       }
@@ -85,6 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (users.some((u) => u.username.toLowerCase() === normalizedUsername.toLowerCase())) {
         throw new Error('A user with this username already exists.');
       }
+      if (role === 'orgManager' && !normalizedSalaryId) {
+        throw new Error('Salary ID is required for Org Manager users.');
+      }
 
       const hash = await sha256(password);
       const newUser: AppUser = {
@@ -92,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: normalizedUsername,
         passwordHash: hash,
         role,
+        salaryId: normalizedSalaryId,
       };
       const updated = [...users, newUser];
       saveUsers(updated);
@@ -101,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const updateUser = useCallback(
-    async (id: string, patch: { username?: string; role?: UserRole; password?: string }): Promise<void> => {
+    async (id: string, patch: { username?: string; role?: UserRole; password?: string; salaryId?: string }): Promise<void> => {
       const existing = users.find((u) => u.id === id);
       if (!existing) throw new Error('User not found.');
 
@@ -118,9 +136,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const nextRole = patch.role ?? existing.role;
+      const nextSalaryId =
+        patch.salaryId !== undefined
+          ? normalizeSalaryId(patch.salaryId)
+          : normalizeSalaryId(existing.salaryId);
       const adminCount = users.filter((u) => u.role === 'admin').length;
       if (existing.role === 'admin' && nextRole !== 'admin' && adminCount <= 1) {
         throw new Error('At least one admin user is required.');
+      }
+      if (nextRole === 'orgManager' && !nextSalaryId) {
+        throw new Error('Salary ID is required for Org Manager users.');
       }
 
       let nextPasswordHash = existing.passwordHash;
@@ -138,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               username: nextUsername,
               role: nextRole,
               passwordHash: nextPasswordHash,
+              salaryId: nextSalaryId,
             }
           : u,
       );
@@ -150,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId: id,
           username: nextUsername,
           role: nextRole,
+          salaryId: nextSalaryId,
         };
         saveSession(updatedSession);
         setSession(updatedSession);
@@ -192,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUser,
         deleteUser,
         isAdmin,
+        isOrgManager,
       }}
     >
       {children}

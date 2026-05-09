@@ -11,12 +11,14 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { duDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import { DELIVERY_UNIT_TYPES, type DeliveryUnitType } from '../types';
+import { canManageDeliveryUnit } from '../utils/permissions';
 
 export function DashboardPage() {
   const { data, addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { isAdmin, session } = useAuth();
   const navigate = useNavigate();
   const showFinancials = data.uiSettings.showFinancials;
+  const canCreateDeliveryUnit = isAdmin;
 
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function DashboardPage() {
             {data.deliveryUnits.length} Delivery Unit{data.deliveryUnits.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {isAdmin && (
+        {canCreateDeliveryUnit && (
           <Button onClick={() => setShowCreate(true)}>
             <Plus size={14} />
             New Delivery Unit
@@ -44,11 +46,12 @@ export function DashboardPage() {
       {data.deliveryUnits.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Building2 size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No Delivery Units yet.{isAdmin ? ' Create one to get started.' : ''}</p>
+          <p className="text-sm">No Delivery Units yet.{canCreateDeliveryUnit ? ' Create one to get started.' : ''}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {data.deliveryUnits.map((du) => {
+            const canEditDu = canManageDeliveryUnit(data, session, du.id);
             const totalSquads = du.releaseTrains.reduce((sum, rt) => sum + rt.squads.length, 0);
             const duMembers = du.assignments.length;
             const rtMembers = du.releaseTrains.reduce((sum, rt) => sum + rt.assignments.length, 0);
@@ -72,7 +75,7 @@ export function DashboardPage() {
                   <Building2 size={16} className="text-primary shrink-0" />
                   <h2 className="font-semibold text-gray-800 truncate">{du.name}</h2>
                 </div>
-                {isAdmin && (
+                {canEditDu && (
                   <div className="flex items-center gap-1 shrink-0 ml-2">
                     <button onClick={() => setEditTarget(du.id)} className="text-gray-300 hover:text-gray-600 transition-colors p-1">
                       <Pencil size={13} />

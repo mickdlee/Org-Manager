@@ -165,17 +165,19 @@ export interface AppData {
 }
 
 // Auth types
-export type UserRole = 'admin' | 'viewer';
+export type UserRole = 'admin' | 'orgManager' | 'viewer';
 
 export interface AppUser {
   id: string;
   username: string;
   passwordHash: string; // SHA-256 hex
   role: UserRole;
+  salaryId?: string;
 }
 
 export interface Session {
   userId: string;
   username: string;
   role: UserRole;
+  salaryId?: string;
 }

@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH, personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
 import { generateSquadSvg, downloadSvg } from '../utils/svgExport';
 import { avatarColor, initialsFromName } from '../utils/avatar';
+import { canManageSquad } from '../utils/permissions';
 import type { AppData, Assignment, AnyRole, OpenPosition, SquadTemplate } from '../types';
 
 const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'> = {
@@ -28,7 +29,7 @@ const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'>
 export function SquadPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
   const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment, updateSquad, applySquadTemplate, updateSquadOnboarding } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { session } = useAuth();
 
   const [showAddPlaceholder, setShowAddPlaceholder] = useState(false);
   const [assignTarget, setAssignTarget] = useState<OpenPosition | null>(null);
@@ -42,6 +43,7 @@ export function SquadPage() {
   const sq = rt?.squads.find((s) => s.id === sqId);
 
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
+  const canEditSquad = canManageSquad(data, session, du.id, rt.id, sq.id);
   const showFinancials = data.uiSettings.showFinancials;
 
   const getPersonName = (id: string) => data.people.find((p) => p.id === id)?.name ?? 'Unknown';
@@ -81,7 +83,7 @@ export function SquadPage() {
         <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
           Members
         </span>
-        {isAdmin && (
+        {canEditSquad && (
           <>
             <Link
               to={`/squads/${du.id}/${rt.id}/${sq.id}/editor`}
@@ -98,7 +100,7 @@ export function SquadPage() {
           </>
         )}
         <div className="ml-auto pb-2">
-          {isAdmin && (
+          {canEditSquad && (
             <Button size="sm" variant="ghost" onClick={() => setShowEditTeam(true)}>
               <Pencil size={13} />
               Edit Team
@@ -150,7 +152,7 @@ export function SquadPage() {
                   </div>
                 );
               })()}
-              {isAdmin && (
+              {canEditSquad && (
                 <div className="flex items-center gap-2">
                   {data.squadTemplates.length > 0 && (
                     <Button size="sm" variant="ghost" onClick={() => setShowApplyTemplate(true)}>
@@ -172,7 +174,7 @@ export function SquadPage() {
             <div className="border border-dashed border-gray-200 rounded-lg py-12 text-center">
               <Users2 size={24} className="mx-auto text-gray-300 mb-2" />
               <p className="text-sm text-gray-400">No members assigned yet.</p>
-              {isAdmin && (
+              {canEditSquad && (
                 <button
                   onClick={() => setShowAddPlaceholder(true)}
                   className="mt-3 text-sm text-blue-600 hover:underline"
@@ -238,7 +240,7 @@ export function SquadPage() {
                       {a.isScheduledOffboarding && a.offboardingDate && (
                         <p className="mt-1 text-xs text-gray-500">Offboarding date: {a.offboardingDate}</p>
                       )}
-                      {isAdmin && (
+                      {canEditSquad && (
                         <div className="mt-2 space-y-2">
                           <label className="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
                             <input
@@ -307,7 +309,7 @@ export function SquadPage() {
                           min={0}
                           max={100}
                           step={5}
-                          disabled={!isAdmin}
+                          disabled={!canEditSquad}
                           value={a.allocationPercentage ?? 100}
                           onChange={(e) =>
                             updateSquadAssignment(du.id, rt.id, sq.id, a.personId, a.role, {
@@ -325,7 +327,7 @@ export function SquadPage() {
                     </div>
 
                     {/* Remove */}
-                    {isAdmin && (
+                    {canEditSquad && (
                       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 shrink-0 mt-0.5">
                         <button
                           onClick={() => setUnallocateTarget(a)}
@@ -370,7 +372,7 @@ export function SquadPage() {
                     <p className="text-[11px] text-amber-700 mt-3">
                       Fill this role from the onboarding pipeline.
                     </p>
-                    {isAdmin && (
+                    {canEditSquad && (
                       <button
                         onClick={() => setAssignTarget(pos)}
                         className="mt-2 text-xs text-blue-700 hover:underline"
@@ -379,7 +381,7 @@ export function SquadPage() {
                       </button>
                     )}
                   </div>
-                  {isAdmin && (
+                  {canEditSquad && (
                     <button
                       onClick={() =>
                         updateSquadOnboarding(du.id, rt.id, sq.id, {

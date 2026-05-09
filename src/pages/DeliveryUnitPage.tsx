@@ -12,6 +12,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { duDailyCost, rtDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import { generateDUSvg, downloadSvg } from '../utils/svgExport';
+import { canManageDeliveryUnit } from '../utils/permissions';
 import type { AnyRole, DeliveryUnitOKR, DeliveryUnitKeyResult } from '../types';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -33,11 +34,12 @@ export function DeliveryUnitPage() {
     addDUOpenPosition,
     removeDUOpenPosition,
   } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
 
   const du = data.deliveryUnits.find((d) => d.id === id);
   if (!du) return <Navigate to="/dashboard" replace />;
+  const canEditDU = canManageDeliveryUnit(data, session, du.id);
   const showFinancials = data.uiSettings.showFinancials;
 
   const [showCreate, setShowCreate] = useState(false);
@@ -67,7 +69,7 @@ export function DeliveryUnitPage() {
         <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
           Overview
         </span>
-        {isAdmin && (
+        {canEditDU && (
           <Link
             to={`/delivery-units/${du.id}/onboarding`}
             className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
@@ -116,7 +118,7 @@ export function DeliveryUnitPage() {
             <Briefcase size={16} /> OKRs
             <span className="text-xs text-gray-400 font-normal">({okrs.length})</span>
           </h2>
-          {isAdmin && (
+          {canEditDU && (
             <Button size="sm" onClick={() => setShowCreateOKR(true)}>
               <Plus size={13} /> New OKR
             </Button>
@@ -139,7 +141,7 @@ export function DeliveryUnitPage() {
                   <th className="px-3 py-2 text-left">Notes</th>
                   <th className="px-3 py-2 text-left">Progress</th>
                   <th className="px-3 py-2 text-left">Target Date</th>
-                  {isAdmin && <th className="px-3 py-2 text-left">Actions</th>}
+                  {canEditDU && <th className="px-3 py-2 text-left">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -167,7 +169,7 @@ export function DeliveryUnitPage() {
                         <td className="px-3 py-2 text-gray-600 align-top">{kr.notes || '—'}</td>
                         <td className="px-3 py-2 text-gray-700 align-top">{idx === 0 ? `${okr.progress ?? 0}%` : ''}</td>
                         <td className="px-3 py-2 text-gray-700 align-top">{idx === 0 ? (okr.targetDate || '—') : ''}</td>
-                        {isAdmin && (
+                        {canEditDU && (
                           <td className="px-3 py-2 align-top">
                             {idx === 0 && (
                               <div className="flex items-center gap-1">
@@ -196,7 +198,7 @@ export function DeliveryUnitPage() {
           assignments={du.assignments}
           people={data.people}
           availableRoles={data.roleConfig.deliveryUnit as AnyRole[]}
-          isAdmin={isAdmin}
+          isAdmin={canEditDU}
           showFinancials={showFinancials}
           onAdd={(a) => addAssignmentToDU(du.id, a)}
           onRemove={(personId, role) => removeAssignmentFromDU(du.id, personId, role)}
@@ -205,7 +207,7 @@ export function DeliveryUnitPage() {
       </Card>
 
       {/* Open Positions */}
-      {isAdmin && (
+      {canEditDU && (
         <Card className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-700 flex items-center gap-2">
@@ -256,7 +258,7 @@ export function DeliveryUnitPage() {
           <Train size={16} /> Release Trains
           <span className="text-xs text-gray-400 font-normal">({du.releaseTrains.length})</span>
         </h2>
-        {isAdmin && (
+        {canEditDU && (
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus size={13} /> New Release Train
           </Button>
@@ -266,7 +268,7 @@ export function DeliveryUnitPage() {
       {du.releaseTrains.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <Train size={32} className="mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No Release Trains yet.{isAdmin ? ' Add one above.' : ''}</p>
+          <p className="text-sm">No Release Trains yet.{canEditDU ? ' Add one above.' : ''}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -281,7 +283,7 @@ export function DeliveryUnitPage() {
                   <Train size={14} className="text-secondary shrink-0" />
                   <h3 className="font-semibold text-gray-800 truncate text-sm">{rt.name}</h3>
                 </div>
-                {isAdmin && (
+                {canEditDU && (
                   <div className="flex items-center gap-1 shrink-0 ml-2">
                     <button onClick={() => setEditTarget(rt.id)} className="text-gray-300 hover:text-gray-600 p-1">
                       <Pencil size={12} />

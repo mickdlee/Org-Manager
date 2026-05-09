@@ -10,6 +10,17 @@ const SESSION_KEY = 'org_manager_session';
 const APP_DATA_ENDPOINT = '/api/app-data';
 const USERS_ENDPOINT = '/api/users';
 
+function normalizeUserRole(role: unknown): AppUser['role'] {
+  if (role === 'admin' || role === 'orgManager' || role === 'viewer') return role;
+  return 'viewer';
+}
+
+function normalizeSalaryId(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 async function getRemoteAppData(): Promise<AppData | null> {
   try {
     const res = await fetch(APP_DATA_ENDPOINT);
@@ -237,7 +248,20 @@ export async function syncAppDataFromServer(localFallback: AppData): Promise<App
 export function loadUsers(): AppUser[] {
   try {
     const raw = localStorage.getItem(USERS_KEY);
-    if (raw) return JSON.parse(raw) as AppUser[];
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+        .map((item) => ({
+          id: typeof item.id === 'string' ? item.id : crypto.randomUUID(),
+          username: typeof item.username === 'string' ? item.username : 'unknown',
+          passwordHash: typeof item.passwordHash === 'string' ? item.passwordHash : '',
+          role: normalizeUserRole(item.role),
+          salaryId: normalizeSalaryId(item.salaryId),
+        }))
+        .filter((user) => user.passwordHash.length > 0 && user.username.trim().length > 0);
+    }
   } catch {
     // ignore
   }
@@ -265,7 +289,18 @@ export async function syncUsersFromServer(localFallback: AppUser[]): Promise<App
 export function loadSession(): Session | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
-    if (raw) return JSON.parse(raw) as Session;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Session>;
+      if (!parsed || typeof parsed.userId !== 'string' || typeof parsed.username !== 'string') {
+        return null;
+      }
+      return {
+        userId: parsed.userId,
+        username: parsed.username,
+        role: normalizeUserRole(parsed.role),
+        salaryId: normalizeSalaryId(parsed.salaryId),
+      };
+    }
   } catch {
     // ignore
   }

@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
 import { Plus, Trash2, RefreshCw, Pencil } from 'lucide-react';
-import type { AppData, RoleConfig, SquadTemplateRole } from '../types';
+import type { AppData, RoleConfig, SquadTemplateRole, UserRole } from '../types';
 import { ConfirmDialog, Modal } from '../components/ui/Modal';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -398,12 +398,14 @@ function UserAdministrationSection() {
   const { users, session, createUser, updateUser, deleteUser } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'viewer'>('viewer');
+  const [role, setRole] = useState<UserRole>('viewer');
+  const [salaryId, setSalaryId] = useState('');
 
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'viewer'>('viewer');
+  const [editRole, setEditRole] = useState<UserRole>('viewer');
+  const [editSalaryId, setEditSalaryId] = useState('');
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
@@ -418,9 +420,10 @@ function UserAdministrationSection() {
     setError(''); setSuccess('');
     if (!username.trim()) { setError('Username is required.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (role === 'orgManager' && !salaryId.trim()) { setError('Salary ID is required for Org Manager users.'); return; }
     try {
-      await createUser(username.trim(), password, role);
-      setUsername(''); setPassword('');
+      await createUser(username.trim(), password, role, salaryId.trim() || undefined);
+      setUsername(''); setPassword(''); setSalaryId('');
       setSuccess(`User "${username.trim()}" created.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create user.');
@@ -434,6 +437,7 @@ function UserAdministrationSection() {
     setEditUsername(target.username);
     setEditPassword('');
     setEditRole(target.role);
+    setEditSalaryId(target.salaryId ?? '');
     setError('');
     setSuccess('');
   };
@@ -447,6 +451,7 @@ function UserAdministrationSection() {
         username: editUsername,
         role: editRole,
         password: editPassword || undefined,
+        salaryId: editSalaryId.trim() || undefined,
       });
       setEditTargetId(null);
       setSuccess('User updated successfully.');
@@ -482,13 +487,20 @@ function UserAdministrationSection() {
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Role</label>
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value as 'admin' | 'viewer')}
+            onChange={(e) => setRole(e.target.value as UserRole)}
             className="block w-full rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
           >
             <option value="viewer">Viewer (read-only)</option>
+            <option value="orgManager">Org Manager (scoped edit)</option>
             <option value="admin">Admin (full access)</option>
           </select>
         </div>
+        <Input
+          label="Login Salary ID"
+          value={salaryId}
+          onChange={(e) => setSalaryId(e.target.value)}
+          placeholder="Required for Org Manager"
+        />
         <Button onClick={handleSubmit}>Create User</Button>
       </div>
 
@@ -511,7 +523,10 @@ function UserAdministrationSection() {
                 {sortedUsers.map((u) => (
                   <tr key={u.id} className="border-b border-gray-100 last:border-0 even:bg-gray-50/40">
                     <td className="px-3 py-2 text-gray-800">{u.username}</td>
-                    <td className="px-3 py-2 text-gray-700">{u.role === 'admin' ? 'Admin' : 'Viewer'}</td>
+                    <td className="px-3 py-2 text-gray-700">
+                      {u.role === 'admin' ? 'Admin' : u.role === 'orgManager' ? 'Org Manager' : 'Viewer'}
+                      {u.salaryId ? <span className="text-xs text-gray-500 ml-2">({u.salaryId})</span> : null}
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{session?.userId === u.id ? 'Current user' : '—'}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-2">
@@ -549,13 +564,20 @@ function UserAdministrationSection() {
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Role</label>
               <select
                 value={editRole}
-                onChange={(e) => setEditRole(e.target.value as 'admin' | 'viewer')}
+                onChange={(e) => setEditRole(e.target.value as UserRole)}
                 className="block w-full rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
               >
                 <option value="viewer">Viewer (read-only)</option>
+                <option value="orgManager">Org Manager (scoped edit)</option>
                 <option value="admin">Admin (full access)</option>
               </select>
             </div>
+            <Input
+              label="Login Salary ID"
+              value={editSalaryId}
+              onChange={(e) => setEditSalaryId(e.target.value)}
+              placeholder="Required for Org Manager"
+            />
             <Input
               label="Reset Password (Optional)"
               type="password"

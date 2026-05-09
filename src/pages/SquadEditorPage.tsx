@@ -9,11 +9,12 @@ import { useAuth } from '../hooks/useAuth';
 import { personTotalAllocationPercent } from '../utils/cost';
 import type { OpenPosition } from '../types';
 import { avatarColor, initialsFromName } from '../utils/avatar';
+import { canManageSquad } from '../utils/permissions';
 
 export function SquadEditorPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
   const { data, addAssignmentToSquad, removeAssignmentFromSquad, updateSquadAssignment, updateSquadOnboarding } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { session } = useAuth();
 
   const [search, setSearch] = useState('');
   const [minAvailableAllocation, setMinAvailableAllocation] = useState(0);
@@ -25,6 +26,7 @@ export function SquadEditorPage() {
   const sq = rt?.squads.find((s) => s.id === sqId);
 
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
+  const canEditSquad = canManageSquad(data, session, du.id, rt.id, sq.id);
 
   const onboarding = sq.onboarding ?? {
     hiringPriority: 'Medium' as const,
@@ -81,7 +83,7 @@ export function SquadEditorPage() {
   );
 
   const onDropToPlaceholder = (placeholder: OpenPosition, personId: string) => {
-    if (!isAdmin) return;
+    if (!canEditSquad) return;
 
     const alreadyAssigned = sq.assignments.some((a) => a.personId === personId && a.role === placeholder.title);
     if (alreadyAssigned) return;
@@ -178,13 +180,13 @@ export function SquadEditorPage() {
                   <div
                     key={slot.id}
                     onDragOver={(e) => {
-                      if (!isAdmin || !isDroppable) return;
+                      if (!canEditSquad || !isDroppable) return;
                       e.preventDefault();
                       setActiveDropRole(slot.id);
                     }}
                     onDragLeave={() => setActiveDropRole((prev) => (prev === slot.id ? null : prev))}
                     onDrop={(e) => {
-                      if (!isAdmin || !placeholder) return;
+                      if (!canEditSquad || !placeholder) return;
                       e.preventDefault();
                       const personId = e.dataTransfer.getData('text/person-id');
                       setActiveDropRole(null);
@@ -236,7 +238,7 @@ export function SquadEditorPage() {
                             <p className="text-[10px] font-medium text-gray-800 truncate">{person.name}</p>
                           </div>
 
-                          {isAdmin && (
+                          {canEditSquad && (
                             <button
                               onClick={() => {
                                 removeAssignmentFromSquad(du.id, rt.id, sq.id, assignment.personId, assignment.role);
@@ -273,14 +275,15 @@ export function SquadEditorPage() {
                               max={100}
                               step={5}
                               value={assignment.allocationPercentage ?? 100}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                if (!canEditSquad) return;
                                 updateSquadAssignment(du.id, rt.id, sq.id, assignment.personId, assignment.role, {
                                   allocationPercentage: Number(e.target.value),
-                                })
-                              }
+                                });
+                              }}
                               className="w-full h-1"
                               aria-label={`Allocation for ${person.name} in ${slot.role}`}
-                              disabled={!isAdmin}
+                              disabled={!canEditSquad}
                             />
                           </div>
                         </div>
@@ -288,7 +291,7 @@ export function SquadEditorPage() {
                     ) : (
                       <div className="flex-1 border border-dashed border-gray-300 rounded px-2 py-3 text-center bg-white flex items-center justify-center">
                         <p className="text-xs text-gray-400">
-                          {isAdmin ? 'Drop person here' : 'Open placeholder'}
+                          {canEditSquad ? 'Drop person here' : 'Open placeholder'}
                         </p>
                       </div>
                     )}
@@ -343,13 +346,13 @@ export function SquadEditorPage() {
                     return (
                   <div
                     key={p.id}
-                    draggable={isAdmin}
+                    draggable={canEditSquad}
                     onDragStart={(e) => e.dataTransfer.setData('text/person-id', p.id)}
                     onDragEnd={() => setActiveDropRole(null)}
                     className={`rounded border p-1 aspect-square flex flex-col items-center justify-center text-center ${
                       overAllocated ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
                     } ${
-                      isAdmin ? 'cursor-grab active:cursor-grabbing' : ''
+                      canEditSquad ? 'cursor-grab active:cursor-grabbing' : ''
                     }`}
                     title={overAllocated ? `Overallocated at ${totalAllocation}%` : undefined}
                   >
@@ -387,9 +390,9 @@ export function SquadEditorPage() {
             )}
           </div>
 
-          {!isAdmin && (
+          {!canEditSquad && (
             <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-              You have read-only access. Only admins can assign people.
+              You have read-only access. Only authorized managers can assign people.
             </p>
           )}
         </aside>

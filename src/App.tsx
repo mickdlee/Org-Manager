@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { AuthProvider } from './hooks/useAuth';
 import { AppStoreProvider } from './store/useAppStore';
 import { LoginPage } from './pages/LoginPage';
@@ -12,10 +13,30 @@ import { SquadOnboardingPage } from './pages/SquadOnboardingPage';
 import { PeoplePage } from './pages/PeoplePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useAuth } from './hooks/useAuth';
+import { useAppStore } from './store/useAppStore';
+import { canManageDeliveryUnit, canManageSquad } from './utils/permissions';
 
-function RequireAdmin({ children }: { children: JSX.Element }) {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+function RequireDUManager({ children }: { children: ReactElement }) {
+  const { duId } = useParams<{ duId: string }>();
+  const { data } = useAppStore();
+  const { session } = useAuth();
+
+  if (!duId || !canManageDeliveryUnit(data, session, duId)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+function RequireSquadManager({ children }: { children: ReactElement }) {
+  const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
+  const { data } = useAppStore();
+  const { session } = useAuth();
+
+  if (!duId || !rtId || !sqId || !canManageSquad(data, session, duId, rtId, sqId)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return children;
 }
 
@@ -31,9 +52,9 @@ export default function App() {
             <Route
               path="/delivery-units/:duId/onboarding"
               element={
-                <RequireAdmin>
+                <RequireDUManager>
                   <DeliveryUnitOnboardingPage />
-                </RequireAdmin>
+                </RequireDUManager>
               }
             />
             <Route path="/release-trains/:duId/:rtId" element={<ReleaseTrainPage />} />
@@ -41,17 +62,17 @@ export default function App() {
             <Route
               path="/squads/:duId/:rtId/:sqId/editor"
               element={
-                <RequireAdmin>
+                <RequireSquadManager>
                   <SquadEditorPage />
-                </RequireAdmin>
+                </RequireSquadManager>
               }
             />
             <Route
               path="/squads/:duId/:rtId/:sqId/onboarding"
               element={
-                <RequireAdmin>
+                <RequireSquadManager>
                   <SquadOnboardingPage />
-                </RequireAdmin>
+                </RequireSquadManager>
               }
             />
             <Route path="/people" element={<PeoplePage />} />

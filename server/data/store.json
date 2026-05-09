@@ -169,6 +169,13 @@
         "email": "fredjones@example.com",
         "salaryId": "SAL-987",
         "typicalRole": "Product Owner"
+      },
+      {
+        "id": "95d0196d-fd4c-46a4-bcde-6ee29f27fb6d",
+        "name": "Michael Lee",
+        "email": "mlee@example.com",
+        "salaryId": "M12345",
+        "typicalRole": "Architect"
       }
     ],
     "deliveryUnits": [
@@ -496,6 +503,11 @@
             "personId": "p18",
             "role": "Delivery Lead",
             "isScheduledOffboarding": false
+          },
+          {
+            "personId": "95d0196d-fd4c-46a4-bcde-6ee29f27fb6d",
+            "role": "Delivery Unit Owner",
+            "isScheduledOffboarding": false
           }
         ],
         "releaseTrains": [
@@ -803,6 +815,13 @@
       "username": "test_viewer",
       "passwordHash": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
       "role": "viewer"
+    },
+    {
+      "id": "a82f4b56-e577-4f2d-b065-9fa7d5e8ef92",
+      "username": "test_DU",
+      "passwordHash": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+      "role": "orgManager",
+      "salaryId": "M12345"
     }
   ]
 }

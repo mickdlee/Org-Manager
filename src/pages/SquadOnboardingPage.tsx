@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
+import { canManageSquad } from '../utils/permissions';
 import type {
   SquadOnboarding, OnboardingCandidate, OnboardingStage,
   OpenPosition, HiringPriority,
@@ -50,19 +51,23 @@ function emptyOnboarding(): SquadOnboarding {
 export function SquadOnboardingPage() {
   const { duId, rtId, sqId } = useParams<{ duId: string; rtId: string; sqId: string }>();
   const { data, updateSquadOnboarding, addPerson, addAssignmentToSquad } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { session } = useAuth();
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
   const rt = du?.releaseTrains.find((r) => r.id === rtId);
   const sq = rt?.squads.find((s) => s.id === sqId);
 
   if (!du || !rt || !sq) return <Navigate to="/dashboard" replace />;
+  const canEditSquad = canManageSquad(data, session, du.id, rt.id, sq.id);
 
   const ob: SquadOnboarding = sq.onboarding ?? emptyOnboarding();
   const [datePrompt, setDatePrompt] = useState<{ candidateId: string; candidateName: string; nextStage: OnboardingStage } | null>(null);
   const [personPrompt, setPersonPrompt] = useState<{ candidateId: string; candidateName: string; nextStage: OnboardingStage } | null>(null);
 
-  const save = (next: SquadOnboarding) => updateSquadOnboarding(du.id, rt.id, sq.id, next);
+  const save = (next: SquadOnboarding) => {
+    if (!canEditSquad) return;
+    updateSquadOnboarding(du.id, rt.id, sq.id, next);
+  };
 
   const applyCandidateStageChange = (candidateId: string, nextStage: OnboardingStage, onboardingDate?: string) => {
     save({
@@ -131,7 +136,7 @@ export function SquadOnboardingPage() {
                 <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">Onboarding Pipeline</h2>
                 <p className="text-xs text-gray-400 mt-0.5">{totalInPipeline} total in pipeline</p>
               </div>
-              {isAdmin && (
+              {canEditSquad && (
                 <AddCandidateButton
                   onAdd={(c) => save({ ...ob, candidates: [...ob.candidates, c] })}
                 />
@@ -156,7 +161,7 @@ export function SquadOnboardingPage() {
                           <CandidateRow
                             key={c.id}
                             candidate={c}
-                            isAdmin={isAdmin}
+                            isAdmin={canEditSquad}
                             onChangeStage={(newStage) => {
                               if (c.stage === 'Recruitment' && newStage !== 'Recruitment') {
                                 setDatePrompt({ candidateId: c.id, candidateName: c.name, nextStage: newStage });
@@ -215,7 +220,7 @@ export function SquadOnboardingPage() {
                 <Flag size={13} className="text-gray-400 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-400 leading-none mb-1">Hiring Priority</p>
-                  {isAdmin ? (
+                  {canEditSquad ? (
                     <select
                       value={ob.hiringPriority ?? 'Medium'}
                       onChange={(e) => save({ ...ob, hiringPriority: e.target.value as HiringPriority })}
@@ -253,7 +258,7 @@ export function SquadOnboardingPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Open Positions</h3>
-              {isAdmin && (
+              {canEditSquad && (
                 <AddPositionButton
                   onAdd={(p) => save({ ...ob, openPositions: [...ob.openPositions, p] })}
                 />
@@ -270,7 +275,7 @@ export function SquadOnboardingPage() {
                       <p className="text-sm text-gray-700 leading-tight">{pos.title}</p>
                       <Badge color={PRIORITY_COLORS[pos.priority]}>{pos.priority}</Badge>
                     </div>
-                    {isAdmin && (
+                    {canEditSquad && (
                       <button
                         onClick={() => save({ ...ob, openPositions: ob.openPositions.filter((p) => p.id !== pos.id) })}
                         className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all shrink-0"
@@ -285,7 +290,7 @@ export function SquadOnboardingPage() {
           </div>
 
           {/* Onboarding settings (admin) */}
-          {isAdmin && (
+          {canEditSquad && (
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Onboarding Settings</h3>
               <div className="space-y-3">

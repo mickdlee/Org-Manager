@@ -12,17 +12,19 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, rtDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import { generateRTSvg, downloadSvg } from '../utils/svgExport';
+import { canManageReleaseTrain } from '../utils/permissions';
 import type { AnyRole } from '../types';
 
 export function ReleaseTrainPage() {
   const { duId, rtId } = useParams<{ duId: string; rtId: string }>();
   const { data, addSquad, updateSquad, deleteSquad, addAssignmentToRT, removeAssignmentFromRT, updateRTAssignment, addRTOpenPosition, removeRTOpenPosition } = useAppStore();
-  const { isAdmin } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
 
   const du = data.deliveryUnits.find((d) => d.id === duId);
   const rt = du?.releaseTrains.find((r) => r.id === rtId);
   if (!du || !rt) return <Navigate to="/dashboard" replace />;
+  const canEditRT = canManageReleaseTrain(data, session, du.id, rt.id);
   const showFinancials = data.uiSettings.showFinancials;
 
   const [showCreate, setShowCreate] = useState(false);
@@ -82,7 +84,7 @@ export function ReleaseTrainPage() {
           assignments={rt.assignments}
           people={data.people}
           availableRoles={data.roleConfig.releaseTrain as AnyRole[]}
-          isAdmin={isAdmin}
+          isAdmin={canEditRT}
           showFinancials={showFinancials}
           onAdd={(a) => addAssignmentToRT(du.id, rt.id, a)}
           onRemove={(personId, role) => removeAssignmentFromRT(du.id, rt.id, personId, role)}
@@ -91,7 +93,7 @@ export function ReleaseTrainPage() {
       </Card>
 
       {/* Open Positions */}
-      {isAdmin && (
+      {canEditRT && (
         <Card className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-700 flex items-center gap-2">
@@ -142,7 +144,7 @@ export function ReleaseTrainPage() {
           <Shield size={16} /> Squads
           <span className="text-xs text-gray-400 font-normal">({rt.squads.length})</span>
         </h2>
-        {isAdmin && (
+        {canEditRT && (
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus size={13} /> New Squad
           </Button>
@@ -152,7 +154,7 @@ export function ReleaseTrainPage() {
       {rt.squads.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <Shield size={32} className="mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No Squads yet.{isAdmin ? ' Add one above.' : ''}</p>
+          <p className="text-sm">No Squads yet.{canEditRT ? ' Add one above.' : ''}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -169,7 +171,7 @@ export function ReleaseTrainPage() {
                   <Shield size={14} className="text-indigo-500 shrink-0" />
                   <h3 className="font-semibold text-gray-800 truncate text-sm">{sq.name}</h3>
                 </div>
-                {isAdmin && (
+                {canEditRT && (
                   <div className="flex gap-1 shrink-0 ml-2">
                     <button onClick={() => setEditTarget(sq.id)} className="text-gray-300 hover:text-gray-600 p-1"><Pencil size={12} /></button>
                     <button onClick={() => setDeleteTarget(sq.id)} className="text-gray-300 hover:text-red-500 p-1"><Trash2 size={12} /></button>
