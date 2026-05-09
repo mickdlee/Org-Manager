@@ -3,7 +3,7 @@ import { Users, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { Input, TextArea } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/Modal';
 import { useAppStore } from '../store/useAppStore';
@@ -26,7 +26,8 @@ export function PeoplePage() {
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.email.toLowerCase().includes(search.toLowerCase()) ||
       (p.salaryId ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (p.typicalRole ?? '').toLowerCase().includes(search.toLowerCase()),
+      (p.typicalRole ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.capabilityNotes ?? '').toLowerCase().includes(search.toLowerCase()),
   );
 
   const editPerson = data.people.find((p) => p.id === editTarget);
@@ -65,6 +66,7 @@ export function PeoplePage() {
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Salary ID</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Typical Role</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Capability Notes</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Photo</th>
                 {showFinancials && <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Day Rate ($)</th>}
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Total Team Allocation</th>
@@ -81,6 +83,7 @@ export function PeoplePage() {
                   <td className="px-4 py-3 text-gray-500">{p.email}</td>
                   <td className="px-4 py-3 text-gray-600">{p.salaryId ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{p.typicalRole ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 max-w-56 truncate" title={p.capabilityNotes}>{p.capabilityNotes ?? '—'}</td>
                   <td className="px-4 py-2 text-gray-600">
                     {p.photoUrl ? (
                       <img src={p.photoUrl} alt={p.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100" />
@@ -150,8 +153,8 @@ export function PeoplePage() {
           showFinancials={showFinancials}
           squadRoles={data.roleConfig.squad}
           onClose={() => setShowCreate(false)}
-          onSubmit={(name, email, salaryId, typicalRole, photoUrl, dayRate) => {
-            addPerson({ name, email, salaryId, typicalRole, photoUrl, dayRate });
+          onSubmit={(name, email, salaryId, typicalRole, capabilityNotes, photoUrl, dayRate) => {
+            addPerson({ name, email, salaryId, typicalRole, capabilityNotes, photoUrl, dayRate });
             setShowCreate(false);
           }}
         />
@@ -163,13 +166,14 @@ export function PeoplePage() {
           initialEmail={editPerson.email}
           initialSalaryId={editPerson.salaryId}
           initialTypicalRole={editPerson.typicalRole}
+          initialCapabilityNotes={editPerson.capabilityNotes}
           initialPhotoUrl={editPerson.photoUrl}
           initialDayRate={editPerson.dayRate}
           showFinancials={showFinancials}
           squadRoles={data.roleConfig.squad}
           onClose={() => setEditTarget(null)}
-          onSubmit={(name, email, salaryId, typicalRole, photoUrl, dayRate) => {
-            updatePerson(editTarget, { name, email, salaryId, typicalRole, photoUrl, dayRate });
+          onSubmit={(name, email, salaryId, typicalRole, capabilityNotes, photoUrl, dayRate) => {
+            updatePerson(editTarget, { name, email, salaryId, typicalRole, capabilityNotes, photoUrl, dayRate });
             setEditTarget(null);
           }}
         />
@@ -192,29 +196,83 @@ interface PersonFormModalProps {
   initialEmail?: string;
   initialSalaryId?: string;
   initialTypicalRole?: string;
+  initialCapabilityNotes?: string;
   initialPhotoUrl?: string;
   initialDayRate?: number;
   showFinancials: boolean;
   squadRoles: string[];
   onClose: () => void;
-  onSubmit: (name: string, email: string, salaryId?: string, typicalRole?: string, photoUrl?: string, dayRate?: number) => void;
+  onSubmit: (name: string, email: string, salaryId?: string, typicalRole?: string, capabilityNotes?: string, photoUrl?: string, dayRate?: number) => void;
 }
 
-function PersonFormModal({ title, initialName = '', initialEmail = '', initialSalaryId = '', initialTypicalRole = '', initialPhotoUrl = '', initialDayRate, showFinancials, squadRoles, onClose, onSubmit }: PersonFormModalProps) {
+function PersonFormModal({ title, initialName = '', initialEmail = '', initialSalaryId = '', initialTypicalRole = '', initialCapabilityNotes = '', initialPhotoUrl = '', initialDayRate, showFinancials, squadRoles, onClose, onSubmit }: PersonFormModalProps) {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [salaryId, setSalaryId] = useState(initialSalaryId);
   const [typicalRole, setTypicalRole] = useState(initialTypicalRole);
+  const [capabilityNotes, setCapabilityNotes] = useState(initialCapabilityNotes);
   const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
   const [dayRate, setDayRate] = useState(initialDayRate?.toString() ?? '');
   const [errors, setErrors] = useState<{ name?: string; email?: string; photoUrl?: string; dayRate?: string }>({});
+
+  const resizeAndCompressImage = (dataUrl: string): Promise<string> => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxDimension = 512;
+      const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas is not available for image processing.'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => reject(new Error('Unable to process selected image.'));
+    img.src = dataUrl;
+  });
+
+  const handlePhotoUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrors((prev) => ({ ...prev, photoUrl: 'Please choose an image file.' }));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      try {
+        const optimized = await resizeAndCompressImage(result);
+        setPhotoUrl(optimized);
+        setErrors((prev) => ({ ...prev, photoUrl: undefined }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to read selected image.';
+        setErrors((prev) => ({ ...prev, photoUrl: message }));
+      }
+    };
+    reader.onerror = () => {
+      setErrors((prev) => ({ ...prev, photoUrl: 'Unable to read selected image.' }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = () => {
     const errs: { name?: string; email?: string; photoUrl?: string; dayRate?: string } = {};
     if (!name.trim()) errs.name = 'Name is required.';
     if (!email.trim()) errs.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email.';
-    if (photoUrl.trim() && !/^https?:\/\//i.test(photoUrl.trim())) errs.photoUrl = 'Photo URL must start with http:// or https://';
+    if (photoUrl.trim() && !/^https?:\/\//i.test(photoUrl.trim()) && !photoUrl.startsWith('data:image/')) {
+      errs.photoUrl = 'Photo must be an image upload or a URL starting with http:// or https://';
+    }
     if (showFinancials && dayRate && (isNaN(Number(dayRate)) || Number(dayRate) < 0)) errs.dayRate = 'Enter a valid day rate.';
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onSubmit(
@@ -222,6 +280,7 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialSa
       email.trim().toLowerCase(),
       salaryId.trim() || undefined,
       typicalRole.trim() || undefined,
+      capabilityNotes.trim() || undefined,
       photoUrl.trim() || undefined,
       showFinancials ? (dayRate ? Number(dayRate) : undefined) : initialDayRate,
     );
@@ -250,7 +309,25 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialSa
             ))}
           </select>
         </div>
+        <TextArea label="Capability Notes" value={capabilityNotes} onChange={(e) => setCapabilityNotes(e.target.value)} rows={3} placeholder="e.g. API design, mentoring, cloud migration, test automation" />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Upload Photo</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+            className="block w-full rounded border border-gray-200 px-3 py-2 text-sm text-gray-800 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-sm file:font-medium file:text-gray-700 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors"
+          />
+        </div>
         <Input label="Photo URL" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} error={errors.photoUrl} placeholder="https://example.com/photo.jpg" />
+        {photoUrl && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Photo Preview</label>
+            <div className="border border-gray-200 rounded p-2 bg-gray-50 inline-flex w-fit">
+              <img src={photoUrl} alt="Preview" className="w-20 h-20 rounded object-cover" />
+            </div>
+          </div>
+        )}
         {showFinancials && (
           <Input label="Day Rate ($)" type="number" value={dayRate} onChange={(e) => setDayRate(e.target.value)} error={errors.dayRate} placeholder="e.g. 650" min="0" />
         )}

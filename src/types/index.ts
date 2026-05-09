@@ -45,6 +45,7 @@ export interface Person {
   email: string;
   salaryId?: string;
   typicalRole?: string;
+  capabilityNotes?: string;
   photoUrl?: string;
   dayRate?: number;
 }
