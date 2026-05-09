@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Users, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
@@ -10,6 +10,63 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
 
+function parseCsvRow(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function parseCsvText(csvText: string): Array<Record<string, string>> {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) return [];
+
+  const headers = parseCsvRow(lines[0]).map((header) => header.trim());
+
+  return lines.slice(1).map((line) => {
+    const values = parseCsvRow(line);
+    return headers.reduce<Record<string, string>>((row, header, index) => {
+      row[header] = values[index] ?? '';
+      return row;
+    }, {});
+  });
+}
+
+const SAMPLE_PEOPLE_CSV = [
+  'name,email,salaryId,typicalRole,capabilityNotes,photoUrl,dayRate',
+  'Jane Smith,jane.smith@example.com,SAL-1024,Developer,"API design, mentoring, test automation",,650',
+  'Marcus Lee,marcus.lee@example.com,SAL-2048,Product Owner,"Backlog shaping, stakeholder management",,900',
+].join('\n');
+
 
 export function PeoplePage() {
   const { data, addPerson, updatePerson, deletePerson } = useAppStore();
@@ -20,6 +77,9 @@ export function PeoplePage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState('');
+  const [importError, setImportError] = useState('');
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const filtered = data.people.filter(
     (p) =>
@@ -32,6 +92,77 @@ export function PeoplePage() {
 
   const editPerson = data.people.find((p) => p.id === editTarget);
   const deletePerson_ = data.people.find((p) => p.id === deleteTarget);
+
+  const handleCsvImport = async (file: File | undefined) => {
+    if (!file) return;
+
+    setImportError('');
+    setImportMessage('');
+
+    try {
+      const text = await file.text();
+      const rows = parseCsvText(text);
+
+      if (rows.length === 0) {
+        setImportError('No importable rows found. Include a header row and at least one person row.');
+        return;
+      }
+
+      const existingEmails = new Set(data.people.map((person) => person.email.toLowerCase()));
+      let imported = 0;
+      let skipped = 0;
+
+      for (const row of rows) {
+        const name = (row.name ?? row.Name ?? '').trim();
+        const email = (row.email ?? row.Email ?? '').trim().toLowerCase();
+
+        if (!name || !email) {
+          skipped += 1;
+          continue;
+        }
+
+        if (existingEmails.has(email)) {
+          skipped += 1;
+          continue;
+        }
+
+        const dayRateRaw = (row.dayRate ?? row.DayRate ?? row['Day Rate'] ?? '').trim();
+        const dayRate = dayRateRaw ? Number(dayRateRaw) : undefined;
+
+        addPerson({
+          name,
+          email,
+          salaryId: (row.salaryId ?? row.SalaryId ?? row['Salary ID'] ?? '').trim() || undefined,
+          typicalRole: (row.typicalRole ?? row.TypicalRole ?? row['Typical Role'] ?? '').trim() || undefined,
+          capabilityNotes: (row.capabilityNotes ?? row.CapabilityNotes ?? row['Capability Notes'] ?? '').trim() || undefined,
+          photoUrl: (row.photoUrl ?? row.PhotoUrl ?? row['Photo URL'] ?? '').trim() || undefined,
+          dayRate: typeof dayRate === 'number' && !Number.isNaN(dayRate) ? dayRate : undefined,
+        });
+
+        existingEmails.add(email);
+        imported += 1;
+      }
+
+      setImportMessage(`Imported ${imported} people.${skipped > 0 ? ` Skipped ${skipped} duplicate or invalid rows.` : ''}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to import CSV file.';
+      setImportError(message);
+    } finally {
+      if (csvInputRef.current) csvInputRef.current.value = '';
+    }
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const blob = new Blob([SAMPLE_PEOPLE_CSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'people-import-sample.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Layout title="People">
@@ -46,11 +177,38 @@ export function PeoplePage() {
           />
         </div>
         {isAdmin && (
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus size={14} /> Add Person
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={handleDownloadSampleCsv}>
+              Download Sample CSV
+            </Button>
+            <Button variant="ghost" onClick={() => csvInputRef.current?.click()}>
+              Import CSV
+            </Button>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => void handleCsvImport(e.target.files?.[0])}
+              className="hidden"
+            />
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={14} /> Add Person
+            </Button>
+          </div>
         )}
       </div>
+
+      {(importMessage || importError) && (
+        <div className={`mb-4 rounded border px-3 py-2 text-sm ${importError ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'}`}>
+          {importError || importMessage}
+        </div>
+      )}
+
+      {isAdmin && (
+        <p className="text-xs text-gray-500 mb-4">
+          CSV columns supported: `name`, `email`, `salaryId`, `typicalRole`, `capabilityNotes`, `photoUrl`, `dayRate`.
+        </p>
+      )}
 
       <Card className="p-0 overflow-hidden">
         {filtered.length === 0 ? (
