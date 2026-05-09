@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign, Pencil, LayoutTemplate } from 'lucide-react';
+import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign, Pencil, LayoutTemplate, Download } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -10,6 +10,7 @@ import { Input, TextArea } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH, personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
+import { generateSquadSvg, downloadSvg } from '../utils/svgExport';
 import type { AppData, Assignment, AnyRole, OpenPosition, SquadTemplate } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -121,6 +122,20 @@ export function SquadPage() {
       {sq.description && (
         <p className="text-sm text-gray-500 mb-6 max-w-2xl">{sq.description}</p>
       )}
+
+      {/* Export button */}
+      <div className="mb-6 flex justify-end">
+        <Button
+          size="sm"
+          onClick={() => {
+            const svg = generateSquadSvg(sq, data);
+            downloadSvg(svg, `${sq.name}-orgmap`);
+          }}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <Download size={13} /> Export as SVG
+        </Button>
+      </div>
 
       <div className="flex gap-6 items-start">
         {/* ── Members panel ─────────────────────────────────────────────── */}

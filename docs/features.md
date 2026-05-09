@@ -141,6 +141,25 @@ An aggregate onboarding dashboard for the entire Delivery Unit:
 
 ---
 
+## Organisational Map Export
+
+Export organizational hierarchies as SVG files for external use, sharing, or archival.
+
+- **Delivery Unit export** — includes the entire hierarchy: all Release Trains and Squads beneath the DU, with role information for each person assigned.
+- **Release Train export** — shows the RT and all Squads it contains, with member assignments and roles.
+- **Squad export** — displays the Squad card with all assigned members, their roles, and names.
+- **SVG format** — output is a standard vector graphic, suitable for viewing in any SVG viewer, embedding in documents, or further editing in design tools.
+- **File naming** — exported files are named `{EntityName}-orgmap.svg` for easy identification.
+- **Diagram features**:
+  - Color-coded node types: DU (blue), RT (purple), Squad (pink), Person (amber)
+  - Hierarchical layout with connecting lines showing organizational relationships
+  - Rounded rectangles with responsive sizing
+  - Subtitles for DU types and person roles
+
+The export button is located in the top-right of the Delivery Unit, Release Train, and Squad detail pages.
+
+---
+
 ## Navigation & Layout
 
 - **Sidebar** — links to Dashboard, People, and Settings.

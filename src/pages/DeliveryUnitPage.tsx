@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
-import { Train, Plus, Pencil, Trash2, Users, DollarSign, Briefcase } from 'lucide-react';
+import { Train, Plus, Pencil, Trash2, Users, DollarSign, Briefcase, Download } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -11,6 +11,7 @@ import { MemberList } from '../components/members/MemberList';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { duDailyCost, rtDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
+import { generateDUSvg, downloadSvg } from '../utils/svgExport';
 import type { AnyRole, DeliveryUnitOKR, DeliveryUnitKeyResult, OpenPosition } from '../types';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -73,6 +74,20 @@ export function DeliveryUnitPage() {
       </div>
 
       {du.description && <p className="text-sm text-gray-500 mb-6">{du.description}</p>}
+
+      {/* Export button */}
+      <div className="mb-6 flex justify-end">
+        <Button
+          size="sm"
+          onClick={() => {
+            const svg = generateDUSvg(du, data);
+            downloadSvg(svg, `${du.name}-orgmap`);
+          }}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <Download size={13} /> Export as SVG
+        </Button>
+      </div>
 
       {/* Cost summary */}
       {showFinancials && (() => {
