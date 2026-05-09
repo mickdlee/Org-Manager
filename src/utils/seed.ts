@@ -13,6 +13,8 @@ const DEFAULT_SQUAD_TEMPLATE = {
   ],
 };
 
+const SAMPLE_TYPICAL_ROLES = [...DEFAULT_SQUAD_ROLES];
+
 export function generateSeedData(): AppData {
   const baseYear = new Date().getFullYear();
   const nextThreeYears = [baseYear, baseYear + 1, baseYear + 2];
@@ -54,7 +56,11 @@ export function generateSeedData(): AppData {
     { id: 'p16', name: 'Rohan Kapoor',     email: 'rohan.kapoor@example.com', photoUrl: 'https://i.pravatar.cc/160?img=16', dayRate: 1200 },
     { id: 'p17', name: 'Chloe Dupont',     email: 'chloe.dupont@example.com', photoUrl: 'https://i.pravatar.cc/160?img=17', dayRate: 1200 },
     { id: 'p18', name: 'Kofi Acheampong',  email: 'kofi.acheampong@example.com', photoUrl: 'https://i.pravatar.cc/160?img=18', dayRate: 1200 },
-  ];
+  ].map((person, idx) => ({
+    ...person,
+    salaryId: `SAL-${String(idx + 1).padStart(5, '0')}`,
+    typicalRole: SAMPLE_TYPICAL_ROLES[idx % SAMPLE_TYPICAL_ROLES.length],
+  }));
 
   // ── Delivery Unit 1: Retail Banking Operations ─────────────────────────────
   const du1 = {
@@ -337,6 +343,7 @@ export function generateLargeSeedData(): AppData {
   const rtNames = ['Core Banking ART', 'Cards ART', 'Payments ART', 'Lending ART', 'Risk ART', 'Customer Channels ART'];
   const squadPrefixes = ['Accounts', 'Cards', 'Payments', 'Lending', 'KYC', 'Fraud', 'Collections', 'Treasury', 'Mobile Banking', 'Digital Channels'];
   const squadSuffixes = ['Team', 'Squad', 'Cell', 'Pod'];
+  const typicalRoles = [...SAMPLE_TYPICAL_ROLES];
   const onboardingActivityRate = 0.08;
   const openRoleRate = 0.08;
 
@@ -351,6 +358,8 @@ export function generateLargeSeedData(): AppData {
       id,
       name,
       email: `${first.toLowerCase()}.${last.toLowerCase()}${i + 1}@example.com`,
+      salaryId: `SAL-${String(i + 1).padStart(5, '0')}`,
+      typicalRole: pick(typicalRoles),
       photoUrl: `https://i.pravatar.cc/160?img=${(i % 70) + 1}`,
       dayRate: randInt(850, 1650),
     };
@@ -371,6 +380,8 @@ export function generateLargeSeedData(): AppData {
       id,
       name,
       email: `${first.toLowerCase()}.${last.toLowerCase()}${idx}@example.com`,
+      salaryId: `SAL-${String(idx).padStart(5, '0')}`,
+      typicalRole: pick(typicalRoles),
       photoUrl: `https://i.pravatar.cc/160?img=${((idx - 1) % 70) + 1}`,
       dayRate: randInt(850, 1650),
     };

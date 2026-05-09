@@ -24,7 +24,9 @@ export function PeoplePage() {
   const filtered = data.people.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.email.toLowerCase().includes(search.toLowerCase()),
+      p.email.toLowerCase().includes(search.toLowerCase()) ||
+      (p.salaryId ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.typicalRole ?? '').toLowerCase().includes(search.toLowerCase()),
   );
 
   const editPerson = data.people.find((p) => p.id === editTarget);
@@ -61,6 +63,8 @@ export function PeoplePage() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Salary ID</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Typical Role</th>
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Photo</th>
                 {showFinancials && <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Day Rate ($)</th>}
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Total Team Allocation</th>
@@ -75,6 +79,8 @@ export function PeoplePage() {
                 <tr key={p.id} className={`border-b last:border-0 ${isOverAllocated ? 'bg-red-50 border-red-100' : 'border-gray-100 even:bg-gray-50/40'}`}>
                   <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
                   <td className="px-4 py-3 text-gray-500">{p.email}</td>
+                  <td className="px-4 py-3 text-gray-600">{p.salaryId ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{p.typicalRole ?? '—'}</td>
                   <td className="px-4 py-2 text-gray-600">
                     {p.photoUrl ? (
                       <img src={p.photoUrl} alt={p.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100" />
@@ -142,8 +148,12 @@ export function PeoplePage() {
         <PersonFormModal
           title="Add Person"
           showFinancials={showFinancials}
+          squadRoles={data.roleConfig.squad}
           onClose={() => setShowCreate(false)}
-          onSubmit={(name, email, photoUrl, dayRate) => { addPerson({ name, email, photoUrl, dayRate }); setShowCreate(false); }}
+          onSubmit={(name, email, salaryId, typicalRole, photoUrl, dayRate) => {
+            addPerson({ name, email, salaryId, typicalRole, photoUrl, dayRate });
+            setShowCreate(false);
+          }}
         />
       )}
       {editTarget && editPerson && (
@@ -151,11 +161,17 @@ export function PeoplePage() {
           title="Edit Person"
           initialName={editPerson.name}
           initialEmail={editPerson.email}
+          initialSalaryId={editPerson.salaryId}
+          initialTypicalRole={editPerson.typicalRole}
           initialPhotoUrl={editPerson.photoUrl}
           initialDayRate={editPerson.dayRate}
           showFinancials={showFinancials}
+          squadRoles={data.roleConfig.squad}
           onClose={() => setEditTarget(null)}
-          onSubmit={(name, email, photoUrl, dayRate) => { updatePerson(editTarget, { name, email, photoUrl, dayRate }); setEditTarget(null); }}
+          onSubmit={(name, email, salaryId, typicalRole, photoUrl, dayRate) => {
+            updatePerson(editTarget, { name, email, salaryId, typicalRole, photoUrl, dayRate });
+            setEditTarget(null);
+          }}
         />
       )}
       {deleteTarget && deletePerson_ && (
@@ -174,16 +190,21 @@ interface PersonFormModalProps {
   title: string;
   initialName?: string;
   initialEmail?: string;
+  initialSalaryId?: string;
+  initialTypicalRole?: string;
   initialPhotoUrl?: string;
   initialDayRate?: number;
   showFinancials: boolean;
+  squadRoles: string[];
   onClose: () => void;
-  onSubmit: (name: string, email: string, photoUrl?: string, dayRate?: number) => void;
+  onSubmit: (name: string, email: string, salaryId?: string, typicalRole?: string, photoUrl?: string, dayRate?: number) => void;
 }
 
-function PersonFormModal({ title, initialName = '', initialEmail = '', initialPhotoUrl = '', initialDayRate, showFinancials, onClose, onSubmit }: PersonFormModalProps) {
+function PersonFormModal({ title, initialName = '', initialEmail = '', initialSalaryId = '', initialTypicalRole = '', initialPhotoUrl = '', initialDayRate, showFinancials, squadRoles, onClose, onSubmit }: PersonFormModalProps) {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
+  const [salaryId, setSalaryId] = useState(initialSalaryId);
+  const [typicalRole, setTypicalRole] = useState(initialTypicalRole);
   const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
   const [dayRate, setDayRate] = useState(initialDayRate?.toString() ?? '');
   const [errors, setErrors] = useState<{ name?: string; email?: string; photoUrl?: string; dayRate?: string }>({});
@@ -199,6 +220,8 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialPh
     onSubmit(
       name.trim(),
       email.trim().toLowerCase(),
+      salaryId.trim() || undefined,
+      typicalRole.trim() || undefined,
       photoUrl.trim() || undefined,
       showFinancials ? (dayRate ? Number(dayRate) : undefined) : initialDayRate,
     );
@@ -213,6 +236,20 @@ function PersonFormModal({ title, initialName = '', initialEmail = '', initialPh
       <div className="space-y-4">
         <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} placeholder="e.g. Jane Smith" />
         <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="e.g. jane@example.com" />
+        <Input label="Salary ID" value={salaryId} onChange={(e) => setSalaryId(e.target.value)} placeholder="e.g. SAL-1024" />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Typical Role</label>
+          <select
+            value={typicalRole}
+            onChange={(e) => setTypicalRole(e.target.value)}
+            className="block w-full rounded border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors"
+          >
+            <option value="">Select a role...</option>
+            {squadRoles.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
+        </div>
         <Input label="Photo URL" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} error={errors.photoUrl} placeholder="https://example.com/photo.jpg" />
         {showFinancials && (
           <Input label="Day Rate ($)" type="number" value={dayRate} onChange={(e) => setDayRate(e.target.value)} error={errors.dayRate} placeholder="e.g. 650" min="0" />

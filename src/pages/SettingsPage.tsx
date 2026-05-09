@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppStore } from '../store/useAppStore';
 import { Navigate } from 'react-router-dom';
 import { Plus, Trash2, RefreshCw, Pencil } from 'lucide-react';
-import type { RoleConfig, SquadTemplate, SquadTemplateRole } from '../types';
+import type { AppData, RoleConfig, SquadTemplateRole } from '../types';
 import { ConfirmDialog, Modal } from '../components/ui/Modal';
 
 export function SettingsPage() {
@@ -17,6 +17,7 @@ export function SettingsPage() {
   return (
     <Layout title="Settings">
       <div className="max-w-xl space-y-6">
+        <DataBackupSection />
         <SampleDataSection />
         <FinancialVisibilitySection />
         <SquadTemplatesSection />
@@ -24,6 +25,81 @@ export function SettingsPage() {
         <CreateUserSection createUser={createUser} />
       </div>
     </Layout>
+  );
+}
+
+function DataBackupSection() {
+  const { exportAllData, importAllData } = useAppStore();
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleExport = () => {
+    setError('');
+    setSuccess('');
+    const data = exportAllData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `org-manager-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setSuccess('Exported current data to JSON file.');
+  };
+
+  const handleImportFile = async (file: File) => {
+    setError('');
+    setSuccess('');
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw) as Partial<AppData>;
+
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Invalid JSON file.');
+      }
+      if (!Array.isArray(parsed.deliveryUnits) || !Array.isArray(parsed.people)) {
+        throw new Error('File is missing required data arrays (deliveryUnits, people).');
+      }
+
+      importAllData(parsed as AppData);
+      setSuccess('Data file loaded successfully.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to load data file.';
+      setError(msg);
+    } finally {
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  return (
+    <Card>
+      <h2 className="font-semibold text-gray-800 mb-1">Data Backup</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Export all current application data to JSON, or load a JSON backup file.
+      </p>
+
+      <div className="flex flex-col gap-2">
+        <Button variant="ghost" onClick={handleExport}>Export All Data (JSON)</Button>
+        <Button variant="ghost" onClick={() => inputRef.current?.click()}>Load Data File (JSON)</Button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleImportFile(file);
+          }}
+          className="hidden"
+        />
+      </div>
+
+      {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+      {success && <p className="text-sm text-green-600 mt-3">{success}</p>}
+    </Card>
   );
 }
 

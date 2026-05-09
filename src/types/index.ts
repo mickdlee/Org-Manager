@@ -43,6 +43,8 @@ export interface Person {
   id: string;
   name: string;
   email: string;
+  salaryId?: string;
+  typicalRole?: string;
   photoUrl?: string;
   dayRate?: number;
 }

@@ -10,6 +10,8 @@ import { loadData, saveData, resetToSampleData as storageSeed, resetToLargeSampl
 
 interface AppStoreContextValue {
   data: AppData;
+  exportAllData: () => AppData;
+  importAllData: (nextData: AppData) => void;
   // People
   addPerson: (p: Omit<Person, 'id'>) => Person;
   updatePerson: (id: string, p: Partial<Omit<Person, 'id'>>) => void;
@@ -70,6 +72,16 @@ const AppStoreContext = createContext<AppStoreContextValue | null>(null);
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => loadData());
+
+  const exportAllData = useCallback((): AppData => {
+    return JSON.parse(JSON.stringify(data)) as AppData;
+  }, [data]);
+
+  const importAllData = useCallback((nextData: AppData) => {
+    saveData(nextData);
+    const normalized = loadData();
+    setData(normalized);
+  }, []);
 
   // ── People ──────────────────────────────────────────────────────────────────
   const addPerson = useCallback((p: Omit<Person, 'id'>): Person => {
@@ -782,6 +794,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     <AppStoreContext.Provider
       value={{
         data,
+        exportAllData,
+        importAllData,
         addPerson, updatePerson, deletePerson,
         addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit,
         addDeliveryUnitOKR, updateDeliveryUnitOKR, deleteDeliveryUnitOKR,
