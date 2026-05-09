@@ -1,152 +1,158 @@
-import type { AppData, AppUser, Session } from '../types';
+import type { AppData, AppUser, Assignment, Session } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
 import { generateLargeSeedData, generateSeedData } from './seed';
+import { cloneDefaultSquadTemplate, DEFAULT_SQUAD_TEMPLATE_NAME } from './defaults';
 
 const DATA_KEY = 'org_manager_data';
 const USERS_KEY = 'org_manager_users';
 const SESSION_KEY = 'org_manager_session';
 
-const DEFAULT_SQUAD_TEMPLATE = {
-  id: 'tmpl-default-balanced-squad',
-  name: 'Default Squad',
-  roles: [
-    { role: 'Product Owner', count: 1 },
-    { role: 'Scrum Master', count: 1 },
-    { role: 'Business Analyst', count: 2 },
-    { role: 'Developer', count: 4 },
-    { role: 'Quality Assurance', count: 2 },
-  ],
-};
+function createSafeFallbackData(): AppData {
+  return {
+    deliveryUnits: [],
+    people: [],
+    roleConfig: {
+      deliveryUnit: [...DEFAULT_DELIVERY_UNIT_ROLES],
+      releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
+      squad: [...DEFAULT_SQUAD_ROLES],
+    },
+    squadTemplates: [
+      cloneDefaultSquadTemplate(),
+    ],
+    uiSettings: {
+      showFinancials: true,
+    },
+  };
+}
 
 // ── App Data ──────────────────────────────────────────────────────────────────
 
 export function loadData(): AppData {
+  const raw = localStorage.getItem(DATA_KEY);
+  if (!raw) {
+    // No data at all — auto-seed with sample data on first run.
+    const seed = generateSeedData();
+    saveData(seed);
+    return seed;
+  }
+
   try {
-    const raw = localStorage.getItem(DATA_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as AppData;
-      const currentYear = new Date().getFullYear();
-      const defaultYears = [currentYear, currentYear + 1, currentYear + 2];
-      // Migrate: seed roleConfig if absent (existing data from before this feature)
-      if (!parsed.roleConfig) {
-        parsed.roleConfig = {
-          deliveryUnit: [...DEFAULT_DELIVERY_UNIT_ROLES],
-          releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
-          squad: [...DEFAULT_SQUAD_ROLES],
-        };
-      } else {
-        // Migrate: ensure new default roles are present in existing roleConfig lists
-        const ensureRoles = (existing: string[], defaults: readonly string[]) => {
-          const next = [...existing];
-          for (const role of defaults) {
-            if (!next.some((r) => r.toLowerCase() === role.toLowerCase())) {
-              next.push(role);
-            }
+    const parsed = JSON.parse(raw) as AppData;
+    const currentYear = new Date().getFullYear();
+    const defaultYears = [currentYear, currentYear + 1, currentYear + 2];
+    // Migrate: seed roleConfig if absent (existing data from before this feature)
+    if (!parsed.roleConfig) {
+      parsed.roleConfig = {
+        deliveryUnit: [...DEFAULT_DELIVERY_UNIT_ROLES],
+        releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
+        squad: [...DEFAULT_SQUAD_ROLES],
+      };
+    } else {
+      // Migrate: ensure new default roles are present in existing roleConfig lists
+      const ensureRoles = (existing: string[], defaults: readonly string[]) => {
+        const next = [...existing];
+        for (const role of defaults) {
+          if (!next.some((r) => r.toLowerCase() === role.toLowerCase())) {
+            next.push(role);
           }
-          return next;
-        };
-        parsed.roleConfig = {
-          deliveryUnit: ensureRoles(parsed.roleConfig.deliveryUnit ?? [], DEFAULT_DELIVERY_UNIT_ROLES),
-          releaseTrain: ensureRoles(parsed.roleConfig.releaseTrain ?? [], DEFAULT_RELEASE_TRAIN_ROLES),
-          squad: ensureRoles(parsed.roleConfig.squad ?? [], DEFAULT_SQUAD_ROLES),
-        };
-      }
+        }
+        return next;
+      };
+      parsed.roleConfig = {
+        deliveryUnit: ensureRoles(parsed.roleConfig.deliveryUnit ?? [], DEFAULT_DELIVERY_UNIT_ROLES),
+        releaseTrain: ensureRoles(parsed.roleConfig.releaseTrain ?? [], DEFAULT_RELEASE_TRAIN_ROLES),
+        squad: ensureRoles(parsed.roleConfig.squad ?? [], DEFAULT_SQUAD_ROLES),
+      };
+    }
 
-      // Migrate: seed deliveryUnit.type if absent in older saved data
-      parsed.deliveryUnits = parsed.deliveryUnits.map((du) => {
-        if (du.type) return du;
-        const inferredType = du.name.toLowerCase().includes('platform')
-          ? 'Platform'
-          : du.name.toLowerCase().includes('customer')
-            ? 'Customer Journey'
-            : 'Supporting';
-        return { ...du, type: inferredType };
-      });
+    // Migrate: seed deliveryUnit.type if absent in older saved data
+    parsed.deliveryUnits = parsed.deliveryUnits.map((du) => {
+      if (du.type) return du;
+      const inferredType = du.name.toLowerCase().includes('platform')
+        ? 'Platform'
+        : du.name.toLowerCase().includes('customer')
+          ? 'Customer Journey'
+          : 'Supporting';
+      return { ...du, type: inferredType };
+    });
 
-      // Migrate: seed assignment-level offboarding flag if absent
-      const withAssignmentFlags = (assignments: { isScheduledOffboarding?: boolean; offboardingDate?: string }[]) =>
-        assignments.map((a) => ({
-          ...a,
-          isScheduledOffboarding: Boolean(a.isScheduledOffboarding),
-          offboardingDate: a.isScheduledOffboarding ? (a.offboardingDate ?? undefined) : undefined,
-        }));
-
-      parsed.deliveryUnits = parsed.deliveryUnits.map((du) => ({
-        ...du,
-        okrs: (du.okrs ?? []).map((okr) => ({
-          ...okr,
-          keyResults: (okr.keyResults ?? []).map((kr, idx) => {
-            if (typeof kr === 'string') {
-              return {
-                id: `kr-${idx + 1}`,
-                title: kr,
-                baseline: '',
-                notes: '',
-                yearlyTargets: defaultYears.map((year) => ({ year, target: '' })),
-              };
-            }
-
-            const targetsByYear = new Map<number, string>(
-              (kr.yearlyTargets ?? []).map((t) => [t.year, t.target ?? '']),
-            );
-
-            return {
-              id: kr.id ?? `kr-${idx + 1}`,
-              title: kr.title ?? '',
-              baseline: kr.baseline ?? '',
-              notes: kr.notes ?? '',
-              yearlyTargets: defaultYears.map((year) => ({
-                year,
-                target: targetsByYear.get(year) ?? '',
-              })),
-            };
-          }),
-        })),
-        assignments: withAssignmentFlags(du.assignments),
-        openPositions: du.openPositions ?? [],
-        releaseTrains: du.releaseTrains.map((rt) => ({
-          ...rt,
-          assignments: withAssignmentFlags(rt.assignments),
-          openPositions: rt.openPositions ?? [],
-          squads: rt.squads.map((sq) => ({
-            ...sq,
-            assignments: withAssignmentFlags(sq.assignments),
-          })),
-        })),
+    // Migrate: seed assignment-level offboarding flag if absent
+    const withAssignmentFlags = (assignments: Assignment[]): Assignment[] =>
+      assignments.map((a) => ({
+        ...a,
+        isScheduledOffboarding: Boolean(a.isScheduledOffboarding),
+        offboardingDate: a.isScheduledOffboarding ? (a.offboardingDate ?? undefined) : undefined,
       }));
 
-      // Migrate: seed squadTemplates if absent
-      if (!parsed.squadTemplates) {
-        parsed.squadTemplates = [];
-      }
+    parsed.deliveryUnits = parsed.deliveryUnits.map((du) => ({
+      ...du,
+      okrs: (du.okrs ?? []).map((okr) => ({
+        ...okr,
+        keyResults: (okr.keyResults ?? []).map((kr, idx) => {
+          if (typeof kr === 'string') {
+            return {
+              id: `kr-${idx + 1}`,
+              title: kr,
+              baseline: '',
+              notes: '',
+              yearlyTargets: defaultYears.map((year) => ({ year, target: '' })),
+            };
+          }
 
-      // Migrate: ensure default squad template exists once
-      const hasDefaultTemplate = parsed.squadTemplates.some(
-        (t) => t.name.trim().toLowerCase() === DEFAULT_SQUAD_TEMPLATE.name.toLowerCase(),
-      );
-      if (!hasDefaultTemplate) {
-        parsed.squadTemplates.push({
-          ...DEFAULT_SQUAD_TEMPLATE,
-          roles: DEFAULT_SQUAD_TEMPLATE.roles.map((r) => ({ ...r })),
-        });
-      }
+          const targetsByYear = new Map<number, string>(
+            (kr.yearlyTargets ?? []).map((t) => [t.year, t.target ?? '']),
+          );
 
-      // Migrate: seed uiSettings if absent
-      if (!parsed.uiSettings) {
-        parsed.uiSettings = { showFinancials: true };
-      } else if (typeof parsed.uiSettings.showFinancials !== 'boolean') {
-        parsed.uiSettings.showFinancials = true;
-      }
+          return {
+            id: kr.id ?? `kr-${idx + 1}`,
+            title: kr.title ?? '',
+            baseline: kr.baseline ?? '',
+            notes: kr.notes ?? '',
+            yearlyTargets: defaultYears.map((year) => ({
+              year,
+              target: targetsByYear.get(year) ?? '',
+            })),
+          };
+        }),
+      })),
+      assignments: withAssignmentFlags(du.assignments),
+      openPositions: du.openPositions ?? [],
+      releaseTrains: du.releaseTrains.map((rt) => ({
+        ...rt,
+        assignments: withAssignmentFlags(rt.assignments),
+        openPositions: rt.openPositions ?? [],
+        squads: rt.squads.map((sq) => ({
+          ...sq,
+          assignments: withAssignmentFlags(sq.assignments),
+        })),
+      })),
+    }));
 
-      return parsed;
+    // Migrate: seed squadTemplates if absent
+    if (!parsed.squadTemplates) {
+      parsed.squadTemplates = [];
     }
+
+    // Migrate: ensure default squad template exists once
+    const hasDefaultTemplate = parsed.squadTemplates.some(
+      (t) => t.name.trim().toLowerCase() === DEFAULT_SQUAD_TEMPLATE_NAME.toLowerCase(),
+    );
+    if (!hasDefaultTemplate) {
+      parsed.squadTemplates.push(cloneDefaultSquadTemplate());
+    }
+
+    // Migrate: seed uiSettings if absent
+    if (!parsed.uiSettings) {
+      parsed.uiSettings = { showFinancials: true };
+    } else if (typeof parsed.uiSettings.showFinancials !== 'boolean') {
+      parsed.uiSettings.showFinancials = true;
+    }
+
+    return parsed;
   } catch {
-    // corrupt data – start fresh
+    // Corrupt/incompatible data: keep stored raw data untouched and return a safe in-memory fallback.
+    return createSafeFallbackData();
   }
-  // No data at all — auto-seed with sample data on first run
-  const seed = generateSeedData();
-  saveData(seed);
-  return seed;
 }
 
 export function resetToSampleData(): AppData {

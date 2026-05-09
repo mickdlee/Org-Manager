@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { ConfirmDialog } from '../ui/Modal';
+import { avatarColor, initialsFromName } from '../../utils/avatar';
 
 interface MemberListProps {
   assignments: Assignment[];
@@ -25,26 +26,6 @@ const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'>
   'Product Owner': 'blue',
   'Squad Member': 'gray',
 };
-
-const AVATAR_COLORS = [
-  'bg-blue-600', 'bg-indigo-600', 'bg-violet-600', 'bg-teal-600',
-  'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600',
-];
-
-function avatarColor(id: string) {
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-}
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('') || '?';
-}
 
 export function MemberList({ assignments, people, availableRoles, isAdmin, showFinancials = true, onAdd, onRemove, onUpdate }: MemberListProps) {
   const [showAdd, setShowAdd] = useState(false);
@@ -94,7 +75,7 @@ export function MemberList({ assignments, people, availableRoles, isAdmin, showF
                 <div
                   className={`w-16 h-16 rounded-full items-center justify-center text-white text-base font-semibold shrink-0 ${avatarColor(a.personId)} ${person?.photoUrl ? 'hidden' : 'flex'}`}
                 >
-                  {person ? initials(person.name) : '?'}
+                  {person ? initialsFromName(person.name) : '?'}
                 </div>
 
                 <div className="flex-1 min-w-0 pt-0.5">

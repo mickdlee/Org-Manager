@@ -10,6 +10,91 @@ import { Plus, Trash2, RefreshCw, Pencil } from 'lucide-react';
 import type { AppData, RoleConfig, SquadTemplateRole } from '../types';
 import { ConfirmDialog, Modal } from '../components/ui/Modal';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isAssignmentLike(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (typeof value.personId !== 'string') return false;
+  if (typeof value.role !== 'string') return false;
+  if (value.allocationPercentage !== undefined && typeof value.allocationPercentage !== 'number') return false;
+  if (value.isScheduledOffboarding !== undefined && typeof value.isScheduledOffboarding !== 'boolean') return false;
+  if (value.offboardingDate !== undefined && typeof value.offboardingDate !== 'string') return false;
+  return true;
+}
+
+function isValidBackupData(value: unknown): value is AppData {
+  if (!isRecord(value)) return false;
+
+  if (!Array.isArray(value.people)) return false;
+  for (const person of value.people) {
+    if (!isRecord(person)) return false;
+    if (typeof person.id !== 'string') return false;
+    if (typeof person.name !== 'string') return false;
+    if (typeof person.email !== 'string') return false;
+  }
+
+  if (!isRecord(value.roleConfig)) return false;
+  if (!isStringArray(value.roleConfig.deliveryUnit)) return false;
+  if (!isStringArray(value.roleConfig.releaseTrain)) return false;
+  if (!isStringArray(value.roleConfig.squad)) return false;
+
+  if (!Array.isArray(value.squadTemplates)) return false;
+  for (const template of value.squadTemplates) {
+    if (!isRecord(template)) return false;
+    if (typeof template.id !== 'string') return false;
+    if (typeof template.name !== 'string') return false;
+    if (!Array.isArray(template.roles)) return false;
+    for (const role of template.roles) {
+      if (!isRecord(role)) return false;
+      if (typeof role.role !== 'string') return false;
+      if (typeof role.count !== 'number') return false;
+    }
+  }
+
+  if (!isRecord(value.uiSettings)) return false;
+  if (typeof value.uiSettings.showFinancials !== 'boolean') return false;
+
+  if (!Array.isArray(value.deliveryUnits)) return false;
+  for (const du of value.deliveryUnits) {
+    if (!isRecord(du)) return false;
+    if (typeof du.id !== 'string') return false;
+    if (typeof du.name !== 'string') return false;
+    if (typeof du.type !== 'string') return false;
+    if (typeof du.description !== 'string') return false;
+    if (!Array.isArray(du.assignments) || !du.assignments.every(isAssignmentLike)) return false;
+    if (!Array.isArray(du.releaseTrains)) return false;
+
+    if (du.okrs !== undefined && !Array.isArray(du.okrs)) return false;
+    if (du.openPositions !== undefined && !Array.isArray(du.openPositions)) return false;
+
+    for (const rt of du.releaseTrains) {
+      if (!isRecord(rt)) return false;
+      if (typeof rt.id !== 'string') return false;
+      if (typeof rt.name !== 'string') return false;
+      if (typeof rt.description !== 'string') return false;
+      if (!Array.isArray(rt.assignments) || !rt.assignments.every(isAssignmentLike)) return false;
+      if (!Array.isArray(rt.squads)) return false;
+      if (rt.openPositions !== undefined && !Array.isArray(rt.openPositions)) return false;
+
+      for (const sq of rt.squads) {
+        if (!isRecord(sq)) return false;
+        if (typeof sq.id !== 'string') return false;
+        if (typeof sq.name !== 'string') return false;
+        if (typeof sq.description !== 'string') return false;
+        if (!Array.isArray(sq.assignments) || !sq.assignments.every(isAssignmentLike)) return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 export function SettingsPage() {
   const { isAdmin, createUser } = useAuth();
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
@@ -56,16 +141,12 @@ function DataBackupSection() {
     setSuccess('');
     try {
       const raw = await file.text();
-      const parsed = JSON.parse(raw) as Partial<AppData>;
-
-      if (!parsed || typeof parsed !== 'object') {
-        throw new Error('Invalid JSON file.');
-      }
-      if (!Array.isArray(parsed.deliveryUnits) || !Array.isArray(parsed.people)) {
-        throw new Error('File is missing required data arrays (deliveryUnits, people).');
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isValidBackupData(parsed)) {
+        throw new Error('Invalid backup file format. Please export a fresh backup and try again.');
       }
 
-      importAllData(parsed as AppData);
+      importAllData(parsed);
       setSuccess('Data file loaded successfully.');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to load data file.';

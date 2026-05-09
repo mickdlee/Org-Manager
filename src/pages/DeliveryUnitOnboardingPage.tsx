@@ -1,7 +1,6 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { Building2, Train, Users, Briefcase, UserMinus, TrendingUp } from 'lucide-react';
+import { Users, Briefcase, UserMinus, TrendingUp } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
-import { Badge } from '../components/ui/Badge';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import type { DeliveryUnitOnboarding } from '../types';
@@ -40,8 +39,6 @@ export function DeliveryUnitOnboardingPage() {
 
   // Aggregate metrics from all squads
   const allSquads = du.releaseTrains.flatMap((rt) => rt.squads);
-  const totalSquadCandidates = allSquads.reduce((sum, sq) => sum + (sq.onboarding?.candidates.length ?? 0), 0);
-  const totalSquadOpenPositions = allSquads.reduce((sum, sq) => sum + (sq.onboarding?.openPositions.length ?? 0), 0);
   const totalScheduledOffboarding =
     du.assignments.filter((a) => a.isScheduledOffboarding).length +
     du.releaseTrains.reduce(

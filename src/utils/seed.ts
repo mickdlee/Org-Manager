@@ -1,17 +1,6 @@
-import type { AppData } from '../types';
+import type { AppData, DeliveryUnit } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
-
-const DEFAULT_SQUAD_TEMPLATE = {
-  id: 'tmpl-default-balanced-squad',
-  name: 'Default Squad',
-  roles: [
-    { role: 'Product Owner', count: 1 },
-    { role: 'Scrum Master', count: 1 },
-    { role: 'Business Analyst', count: 2 },
-    { role: 'Developer', count: 4 },
-    { role: 'Quality Assurance', count: 2 },
-  ],
-};
+import { cloneDefaultSquadTemplate } from './defaults';
 
 const SAMPLE_TYPICAL_ROLES = [...DEFAULT_SQUAD_ROLES];
 
@@ -63,7 +52,7 @@ export function generateSeedData(): AppData {
   }));
 
   // ── Delivery Unit 1: Retail Banking Operations ─────────────────────────────
-  const du1 = {
+  const du1: DeliveryUnit = {
     id: 'du01',
     name: 'Retail Banking Operations',
     type: 'Customer Journey' as const,
@@ -189,7 +178,7 @@ export function generateSeedData(): AppData {
   };
 
   // ── Delivery Unit 2: Customer Banking ──────────────────────────────────────
-  const du2 = {
+  const du2: DeliveryUnit = {
     id: 'du02',
     name: 'Customer Banking',
     type: 'Customer Journey' as const,
@@ -314,7 +303,7 @@ export function generateSeedData(): AppData {
       releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
       squad: [...DEFAULT_SQUAD_ROLES],
     },
-    squadTemplates: [{ ...DEFAULT_SQUAD_TEMPLATE, roles: DEFAULT_SQUAD_TEMPLATE.roles.map((r) => ({ ...r })) }],
+    squadTemplates: [cloneDefaultSquadTemplate()],
     uiSettings: {
       showFinancials: true,
     },
@@ -325,7 +314,7 @@ function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function pick<T>(arr: T[]): T {
+function pick<T>(arr: readonly T[]): T {
   return arr[randInt(0, arr.length - 1)];
 }
 
@@ -531,7 +520,7 @@ export function generateLargeSeedData(): AppData {
       releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
       squad: [...DEFAULT_SQUAD_ROLES],
     },
-    squadTemplates: [{ ...DEFAULT_SQUAD_TEMPLATE, roles: DEFAULT_SQUAD_TEMPLATE.roles.map((r) => ({ ...r })) }],
+    squadTemplates: [cloneDefaultSquadTemplate()],
     uiSettings: {
       showFinancials: true,
     },

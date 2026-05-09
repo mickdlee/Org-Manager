@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, DollarSign, Pencil, LayoutTemplate, Download } from 'lucide-react';
+import { UserPlus, Trash2, Train, Building2, Users2, ChevronRight, Pencil, LayoutTemplate, Download } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -11,29 +11,8 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { squadDailyCost, formatCost, WORKING_DAYS_PER_MONTH, personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
 import { generateSquadSvg, downloadSvg } from '../utils/svgExport';
+import { avatarColor, initialsFromName } from '../utils/avatar';
 import type { AppData, Assignment, AnyRole, OpenPosition, SquadTemplate } from '../types';
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join('');
-}
-
-const AVATAR_COLORS = [
-  'bg-blue-600', 'bg-indigo-600', 'bg-violet-600', 'bg-teal-600',
-  'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600',
-];
-
-function avatarColor(id: string) {
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-}
 
 const roleColors: Record<string, 'blue' | 'green' | 'amber' | 'indigo' | 'gray'> = {
   'Delivery Unit Owner': 'blue',
@@ -230,7 +209,7 @@ export function SquadPage() {
                     <div
                       className={`w-16 h-16 rounded-full items-center justify-center text-white text-base font-semibold shrink-0 ${avatarColor(a.personId)} ${person?.photoUrl ? 'hidden' : 'flex'}`}
                     >
-                      {person ? initials(person.name) : '?'}
+                      {person ? initialsFromName(person.name) : '?'}
                     </div>
 
                     {/* Info */}

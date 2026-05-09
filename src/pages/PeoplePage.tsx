@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/ui/Modal';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { personTotalAllocationPercent, personAllocationBreakdown } from '../utils/cost';
+import { initialsFromName } from '../utils/avatar';
 
 function parseCsvRow(line: string): string[] {
   const values: string[] = [];
@@ -247,12 +248,7 @@ export function PeoplePage() {
                       <img src={p.photoUrl} alt={p.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100" />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-gray-200 text-gray-600 text-sm font-semibold flex items-center justify-center">
-                        {p.name
-                          .split(' ')
-                          .filter(Boolean)
-                          .slice(0, 2)
-                          .map((w) => w[0]?.toUpperCase())
-                          .join('') || '?'}
+                        {initialsFromName(p.name)}
                       </div>
                     )}
                   </td>

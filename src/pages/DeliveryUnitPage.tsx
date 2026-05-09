@@ -12,7 +12,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { duDailyCost, rtDailyCost, formatCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import { generateDUSvg, downloadSvg } from '../utils/svgExport';
-import type { AnyRole, DeliveryUnitOKR, DeliveryUnitKeyResult, OpenPosition } from '../types';
+import type { AnyRole, DeliveryUnitOKR, DeliveryUnitKeyResult } from '../types';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const OKR_YEARS = [CURRENT_YEAR, CURRENT_YEAR + 1, CURRENT_YEAR + 2];

@@ -7,6 +7,7 @@ import {
 } from 'react';
 import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate, DeliveryUnitOKR, OpenPosition } from '../types';
 import { loadData, saveData, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
+import { DEFAULT_SQUAD_TEMPLATE_NAME, DEFAULT_SQUAD_TEMPLATE_ROLES } from '../utils/defaults';
 
 interface AppStoreContextValue {
   data: AppData;
@@ -253,18 +254,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     setData((prev) => {
       const defaultTemplate = prev.squadTemplates.find(
-        (t) => t.name.trim().toLowerCase() === 'default squad',
+        (t) => t.name.trim().toLowerCase() === DEFAULT_SQUAD_TEMPLATE_NAME.toLowerCase(),
       );
 
-      const defaultTemplateRoles = [
-        { role: 'Product Owner', count: 1 },
-        { role: 'Scrum Master', count: 1 },
-        { role: 'Business Analyst', count: 2 },
-        { role: 'Developer', count: 4 },
-        { role: 'Quality Assurance', count: 2 },
-      ];
-
-      const rolesToApply = defaultTemplate?.roles ?? defaultTemplateRoles;
+      const rolesToApply = defaultTemplate?.roles ?? DEFAULT_SQUAD_TEMPLATE_ROLES;
 
       const autoOpenPositions: OpenPosition[] = rolesToApply.flatMap(({ role, count }) =>
         Array.from({ length: count }, () => ({
