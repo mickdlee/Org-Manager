@@ -6,6 +6,18 @@ const DATA_KEY = 'org_manager_data';
 const USERS_KEY = 'org_manager_users';
 const SESSION_KEY = 'org_manager_session';
 
+const DEFAULT_SQUAD_TEMPLATE = {
+  id: 'tmpl-default-balanced-squad',
+  name: 'Default Squad',
+  roles: [
+    { role: 'Product Owner', count: 1 },
+    { role: 'Scrum Master', count: 1 },
+    { role: 'Business Analyst', count: 2 },
+    { role: 'Developer', count: 4 },
+    { role: 'Quality Assurance', count: 2 },
+  ],
+};
+
 // ── App Data ──────────────────────────────────────────────────────────────────
 
 export function loadData(): AppData {
@@ -106,6 +118,17 @@ export function loadData(): AppData {
       // Migrate: seed squadTemplates if absent
       if (!parsed.squadTemplates) {
         parsed.squadTemplates = [];
+      }
+
+      // Migrate: ensure default squad template exists once
+      const hasDefaultTemplate = parsed.squadTemplates.some(
+        (t) => t.name.trim().toLowerCase() === DEFAULT_SQUAD_TEMPLATE.name.toLowerCase(),
+      );
+      if (!hasDefaultTemplate) {
+        parsed.squadTemplates.push({
+          ...DEFAULT_SQUAD_TEMPLATE,
+          roles: DEFAULT_SQUAD_TEMPLATE.roles.map((r) => ({ ...r })),
+        });
       }
 
       // Migrate: seed uiSettings if absent

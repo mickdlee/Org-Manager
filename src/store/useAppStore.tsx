@@ -237,8 +237,49 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   // ── Squads ──────────────────────────────────────────────────────────────────
   const addSquad = useCallback((duId: string, rtId: string, sq: Omit<Squad, 'id' | 'assignments'>): Squad => {
-    const newSq: Squad = { id: crypto.randomUUID(), assignments: [], ...sq };
+    let createdSquad: Squad | null = null;
+
     setData((prev) => {
+      const defaultTemplate = prev.squadTemplates.find(
+        (t) => t.name.trim().toLowerCase() === 'default squad',
+      );
+
+      const defaultTemplateRoles = [
+        { role: 'Product Owner', count: 1 },
+        { role: 'Scrum Master', count: 1 },
+        { role: 'Business Analyst', count: 2 },
+        { role: 'Developer', count: 4 },
+        { role: 'Quality Assurance', count: 2 },
+      ];
+
+      const rolesToApply = defaultTemplate?.roles ?? defaultTemplateRoles;
+
+      const autoOpenPositions: OpenPosition[] = rolesToApply.flatMap(({ role, count }) =>
+        Array.from({ length: count }, () => ({
+          id: crypto.randomUUID(),
+          title: role,
+          priority: 'Medium' as const,
+          allocationPercentage: 100,
+        })),
+      );
+
+      const onboarding = sq.onboarding ?? {
+        hiringPriority: 'Medium' as const,
+        pendingOffboarding: 0,
+        avgRampUpDays: 14,
+        candidates: [],
+        openPositions: autoOpenPositions,
+      };
+
+      const newSq: Squad = {
+        id: crypto.randomUUID(),
+        assignments: [],
+        ...sq,
+        onboarding,
+      };
+
+      createdSquad = newSq;
+
       const next = {
         ...prev,
         deliveryUnits: prev.deliveryUnits.map((du) =>
@@ -255,7 +296,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       saveData(next);
       return next;
     });
-    return newSq;
+
+    if (!createdSquad) {
+      throw new Error('Failed to create squad.');
+    }
+
+    return createdSquad;
   }, []);
 
   const updateSquad = useCallback((duId: string, rtId: string, sqId: string, sq: Partial<Pick<Squad, 'name' | 'description'>>) => {

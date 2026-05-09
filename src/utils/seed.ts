@@ -1,6 +1,18 @@
 import type { AppData } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
 
+const DEFAULT_SQUAD_TEMPLATE = {
+  id: 'tmpl-default-balanced-squad',
+  name: 'Default Squad',
+  roles: [
+    { role: 'Product Owner', count: 1 },
+    { role: 'Scrum Master', count: 1 },
+    { role: 'Business Analyst', count: 2 },
+    { role: 'Developer', count: 4 },
+    { role: 'Quality Assurance', count: 2 },
+  ],
+};
+
 export function generateSeedData(): AppData {
   const baseYear = new Date().getFullYear();
   const nextThreeYears = [baseYear, baseYear + 1, baseYear + 2];
@@ -296,7 +308,7 @@ export function generateSeedData(): AppData {
       releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
       squad: [...DEFAULT_SQUAD_ROLES],
     },
-    squadTemplates: [],
+    squadTemplates: [{ ...DEFAULT_SQUAD_TEMPLATE, roles: DEFAULT_SQUAD_TEMPLATE.roles.map((r) => ({ ...r })) }],
     uiSettings: {
       showFinancials: true,
     },
@@ -508,7 +520,7 @@ export function generateLargeSeedData(): AppData {
       releaseTrain: [...DEFAULT_RELEASE_TRAIN_ROLES],
       squad: [...DEFAULT_SQUAD_ROLES],
     },
-    squadTemplates: [],
+    squadTemplates: [{ ...DEFAULT_SQUAD_TEMPLATE, roles: DEFAULT_SQUAD_TEMPLATE.roles.map((r) => ({ ...r })) }],
     uiSettings: {
       showFinancials: true,
     },
