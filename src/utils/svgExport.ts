@@ -1,4 +1,5 @@
-import type { DeliveryUnit, ReleaseTrain, Squad, AppData } from '../types';
+import type { DeliveryUnit, ReleaseTrain, Squad, AppData, OpenPosition } from '../types';
+import type { Assignment } from '../types';
 
 interface SvgNode {
   x: number;
@@ -7,7 +8,8 @@ interface SvgNode {
   height: number;
   title: string;
   subtitle?: string;
-  type: 'du' | 'rt' | 'squad' | 'person';
+  memberLines?: string[];
+  type: 'du' | 'rt' | 'squad';
   children?: SvgNode[];
 }
 
@@ -15,17 +17,19 @@ const COLORS = {
   du: '#7F1D1D',
   rt: '#B91C1C',
   squad: '#DC2626',
-  person: '#EF4444',
 };
 
 const PADDING = 10;
 const ROW_GAP = 50;
 const COL_GAP = 30;
 const SQUAD_MEMBER_GAP = 12;
-const NODE_WIDTH = 180;
+const NODE_WIDTH = 175;
 const NODE_HEIGHT = 70;
-const PERSON_CARD_WIDTH = 130;
-const PERSON_CARD_HEIGHT = 50;
+const SQUAD_NODE_WIDTH = 175;
+const SQUAD_MEMBER_LINE_HEIGHT = 16;
+const SQUAD_MEMBERS_START_Y = 58;
+const SQUAD_BOTTOM_PADDING = 14;
+const PLACEHOLDER_MEMBER_LINE = 'Placeholder - Unassigned';
 
 /**
  * Generate SVG for a Delivery Unit with all Release Trains and Squads
@@ -101,14 +105,80 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines.slice(0, 2); // Max 2 lines
 }
 
+function truncateLine(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return text.slice(0, Math.max(1, maxChars - 1)).trimEnd() + '…';
+}
+
+function safeText(value: string | undefined, placeholder: string): string {
+  if (!value || typeof value !== 'string') return placeholder;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : placeholder;
+}
+
+function formatMemberLines(
+  assignments: Assignment[],
+  data: AppData,
+  maxChars: number,
+  includePlaceholderIfEmpty = true
+): string[] {
+  if (!assignments || assignments.length === 0) {
+    return includePlaceholderIfEmpty ? [PLACEHOLDER_MEMBER_LINE] : [];
+  }
+
+  return assignments.map((assignment) => {
+    if (!assignment || typeof assignment !== 'object') {
+      return truncateLine(PLACEHOLDER_MEMBER_LINE, maxChars);
+    }
+    
+    // Handle unassigned positions (empty or invalid personId)
+    const isUnassignedPosition = !assignment.personId || assignment.personId.trim().length === 0;
+    const person = !isUnassignedPosition ? data.people.find((p) => p.id === assignment.personId) : undefined;
+    
+    const personName = person?.name?.trim() 
+      ? person.name 
+      : isUnassignedPosition ? 'Unassigned' : 'Placeholder';
+    const role = assignment.role?.trim() && assignment.role.trim().length > 0
+      ? assignment.role.trim()
+      : 'Unassigned';
+    
+    const line = `${personName} - ${role}`;
+    return truncateLine(line.length > 0 ? line : PLACEHOLDER_MEMBER_LINE, maxChars);
+  });
+}
+
+function calculateMemberCardHeight(memberCount: number): number {
+  return Math.max(
+    NODE_HEIGHT,
+    SQUAD_MEMBERS_START_Y +
+      memberCount * SQUAD_MEMBER_LINE_HEIGHT +
+      SQUAD_BOTTOM_PADDING
+  );
+}
+
 function buildDuTree(du: DeliveryUnit, data: AppData): SvgNode {
+  const memberLines = formatMemberLines(du.assignments, data, 35);
+  
+  // Include unfilled positions (open positions)
+  const openPositionLines = (du.openPositions || []).map(
+    (position: OpenPosition) => {
+      const positionTitle = safeText(position.title, 'Unassigned');
+      return truncateLine(`Unassigned - ${positionTitle}`, 35);
+    }
+  );
+  
+  const allMemberLines = [...memberLines, ...openPositionLines];
+  const duTitle = safeText(du.name, 'Delivery Unit Placeholder');
+  const totalMemberCount = du.assignments.length + openPositionLines.length;
+
   const duNode: SvgNode = {
     x: 0,
     y: 0,
     width: NODE_WIDTH,
-    height: NODE_HEIGHT,
-    title: du.name,
-    subtitle: du.type,
+    height: calculateMemberCardHeight(allMemberLines.length),
+    title: duTitle,
+    subtitle: `${du.type} - ${totalMemberCount} member${totalMemberCount === 1 ? '' : 's'}`,
+    memberLines: allMemberLines,
     type: 'du',
     children: du.releaseTrains.map((rt) => buildRtTree(rt, data)),
   };
@@ -117,12 +187,28 @@ function buildDuTree(du: DeliveryUnit, data: AppData): SvgNode {
 }
 
 function buildRtTree(rt: ReleaseTrain, data: AppData): SvgNode {
+  const memberLines = formatMemberLines(rt.assignments, data, 35);
+  
+  // Include unfilled positions (open positions)
+  const openPositionLines = (rt.openPositions || []).map(
+    (position: OpenPosition) => {
+      const positionTitle = safeText(position.title, 'Unassigned');
+      return truncateLine(`Unassigned - ${positionTitle}`, 35);
+    }
+  );
+  
+  const allMemberLines = [...memberLines, ...openPositionLines];
+  const rtTitle = safeText(rt.name, 'Release Train Placeholder');
+  const totalMemberCount = rt.assignments.length + openPositionLines.length;
+
   const rtNode: SvgNode = {
     x: 0,
     y: 0,
     width: NODE_WIDTH,
-    height: NODE_HEIGHT,
-    title: rt.name,
+    height: calculateMemberCardHeight(allMemberLines.length),
+    title: rtTitle,
+    subtitle: `${totalMemberCount} member${totalMemberCount === 1 ? '' : 's'}`,
+    memberLines: allMemberLines,
     type: 'rt',
     children: rt.squads.map((sq) => buildSquadTree(sq, data)),
   };
@@ -131,25 +217,30 @@ function buildRtTree(rt: ReleaseTrain, data: AppData): SvgNode {
 }
 
 function buildSquadTree(squad: Squad, data: AppData): SvgNode {
+  const memberLines = formatMemberLines(squad.assignments, data, 35);
+  
+  // Include unfilled positions (open positions)
+  const openPositionLines = (squad.onboarding?.openPositions || []).map(
+    (position: OpenPosition) => {
+      const positionTitle = safeText(position.title, 'Unassigned');
+      return truncateLine(`Unassigned - ${positionTitle}`, 35);
+    }
+  );
+  
+  const allMemberLines = [...memberLines, ...openPositionLines];
+  const squadHeight = calculateMemberCardHeight(allMemberLines.length);
+  const squadTitle = safeText(squad.name, 'Squad Placeholder');
+  const totalMemberCount = squad.assignments.length + openPositionLines.length;
+
   const squadNode: SvgNode = {
     x: 0,
     y: 0,
-    width: NODE_WIDTH,
-    height: NODE_HEIGHT,
-    title: squad.name,
+    width: SQUAD_NODE_WIDTH,
+    height: squadHeight,
+    title: squadTitle,
+    subtitle: `${totalMemberCount} member${totalMemberCount === 1 ? '' : 's'}`,
+    memberLines: allMemberLines,
     type: 'squad',
-    children: squad.assignments.map((assignment) => {
-      const person = data.people.find((p) => p.id === assignment.personId);
-      return {
-        x: 0,
-        y: 0,
-        width: PERSON_CARD_WIDTH,
-        height: PERSON_CARD_HEIGHT,
-        title: person?.name ?? 'Unknown',
-        subtitle: assignment.role,
-        type: 'person',
-      };
-    }),
   };
 
   return squadNode;
@@ -299,16 +390,14 @@ function drawNodeRecursive(svg: SvgBuilder, node: SvgNode): void {
 
   // Draw node
   svg.addRect(node.x, node.y, node.width, node.height, color);
-  
-  const isSmallCard = node.type === 'person';
-  const titleY = node.y + (isSmallCard ? 18 : 25);
-  const subtitleY = node.y + (isSmallCard ? 38 : 50);
-  
-  // Wrap text based on node type
-  const maxTitleChars = isSmallCard ? 14 : 18;
-  
+
+  const hasMemberLines = Boolean(node.memberLines && node.memberLines.length > 0);
+  const titleY = node.y + (hasMemberLines ? 20 : 25);
+  const subtitleY = node.y + (hasMemberLines ? 40 : 50);
+  const maxTitleChars = hasMemberLines ? 20 : 14;
+
   svg.addText(node.x + node.width / 2, titleY, node.title, {
-    fontSize: isSmallCard ? 10 : 12,
+    fontSize: hasMemberLines ? 11 : 12,
     fontWeight: 'bold',
     fill: 'white',
     textAnchor: 'middle',
@@ -316,13 +405,26 @@ function drawNodeRecursive(svg: SvgBuilder, node: SvgNode): void {
   });
 
   if (node.subtitle) {
-    const maxSubChars = isSmallCard ? 16 : 20;
+    const maxSubChars = hasMemberLines ? 28 : 18;
     svg.addText(node.x + node.width / 2, subtitleY, node.subtitle, {
-      fontSize: isSmallCard ? 8 : 9,
+      fontSize: 9,
       fill: 'rgba(255, 255, 255, 0.9)',
       textAnchor: 'middle',
       maxChars: maxSubChars,
     });
+  }
+
+  if (node.memberLines && node.memberLines.length > 0) {
+    const maxMemberChars = 35;
+    for (let i = 0; i < node.memberLines.length; i++) {
+      const lineY = node.y + SQUAD_MEMBERS_START_Y + i * SQUAD_MEMBER_LINE_HEIGHT;
+      svg.addText(node.x + 12, lineY, node.memberLines[i], {
+        fontSize: 9,
+        fill: 'rgba(255, 255, 255, 0.96)',
+        textAnchor: 'start',
+        maxChars: maxMemberChars,
+      });
+    }
   }
 
   // Draw children
