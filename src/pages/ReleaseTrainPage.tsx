@@ -30,9 +30,11 @@ export function ReleaseTrainPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [showCreateOpenPosition, setShowCreateOpenPosition] = useState(false);
   const [deleteOpenPositionTarget, setDeleteOpenPositionTarget] = useState<string | null>(null);
+  const [assignOpenPositionTarget, setAssignOpenPositionTarget] = useState<string | null>(null);
 
   const editSq = rt.squads.find((s) => s.id === editTarget);
   const deleteSq = rt.squads.find((s) => s.id === deleteTarget);
+  const assignOpenPosition = (rt.openPositions ?? []).find((pos) => pos.id === assignOpenPositionTarget);
 
   return (
     <Layout
@@ -117,6 +119,9 @@ export function ReleaseTrainPage() {
                     <p className="text-sm font-semibold text-amber-800 truncate">{pos.title}</p>
                     <p className="text-xs text-amber-700/80">Priority: {pos.priority} · Allocation: {pos.allocationPercentage ?? 100}%</p>
                   </div>
+                  <Button size="sm" variant="ghost" onClick={() => setAssignOpenPositionTarget(pos.id)}>
+                    Assign Person
+                  </Button>
                   <button
                     onClick={() => setDeleteOpenPositionTarget(pos.id)}
                     className="opacity-0 group-hover:opacity-100 text-amber-400 hover:text-red-500 transition-all shrink-0 mt-0.5"
@@ -275,7 +280,89 @@ export function ReleaseTrainPage() {
           onCancel={() => setDeleteOpenPositionTarget(null)}
         />
       )}
+
+      {assignOpenPosition && (
+        <AssignOpenPositionModal
+          title="Assign Release Train Role"
+          roleTitle={assignOpenPosition.title}
+          allocation={assignOpenPosition.allocationPercentage ?? 100}
+          people={data.people}
+          onClose={() => setAssignOpenPositionTarget(null)}
+          onAssign={(personId) => {
+            addAssignmentToRT(du.id, rt.id, {
+              personId,
+              role: assignOpenPosition.title,
+              allocationPercentage: assignOpenPosition.allocationPercentage ?? 100,
+            });
+            removeRTOpenPosition(du.id, rt.id, assignOpenPosition.id);
+            setAssignOpenPositionTarget(null);
+          }}
+        />
+      )}
     </Layout>
+  );
+}
+
+function AssignOpenPositionModal({
+  title,
+  roleTitle,
+  allocation,
+  people,
+  onClose,
+  onAssign,
+}: {
+  title: string;
+  roleTitle: string;
+  allocation: number;
+  people: Array<{ id: string; name: string; email: string; typicalRole?: string }>;
+  onClose: () => void;
+  onAssign: (personId: string) => void;
+}) {
+  const [personId, setPersonId] = useState(people[0]?.id ?? '');
+  const [error, setError] = useState('');
+
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => {
+            if (!personId) {
+              setError('Please select a person.');
+              return;
+            }
+            onAssign(personId);
+          }}>
+            Assign
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p className="font-medium">{roleTitle}</p>
+          <p className="text-xs text-amber-700">Allocation: {allocation}%</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Person</label>
+          <select
+            value={personId}
+            onChange={(e) => { setPersonId(e.target.value); setError(''); }}
+            className="block w-full rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+          >
+            <option value="">Select a person...</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}{person.typicalRole ? ` · ${person.typicalRole}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+      </div>
+    </Modal>
   );
 }
 
