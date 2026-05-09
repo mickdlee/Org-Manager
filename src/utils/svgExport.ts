@@ -12,10 +12,10 @@ interface SvgNode {
 }
 
 const COLORS = {
-  du: '#3B82F6',
-  rt: '#8B5CF6',
-  squad: '#EC4899',
-  person: '#F59E0B',
+  du: '#7F1D1D',
+  rt: '#B91C1C',
+  squad: '#DC2626',
+  person: '#EF4444',
 };
 
 const PADDING = 10;
@@ -347,6 +347,9 @@ class SvgBuilder {
   addStyle(): void {
     this.content.push(
       '<defs>' +
+        '<filter id="nodeShadow" x="-20%" y="-20%" width="140%" height="160%">' +
+        '<feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.22" />' +
+        '</filter>' +
         '<clipPath id="clipTitle"><rect width="140" height="20" /></clipPath>' +
         '<clipPath id="clipSubtitle"><rect width="140" height="18" /></clipPath>' +
         '<clipPath id="clipPerson"><rect width="100" height="30" /></clipPath>' +
@@ -370,7 +373,7 @@ class SvgBuilder {
     strokeWidth = 2
   ): void {
     this.content.push(
-      `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`
+      `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" filter="url(#nodeShadow)"/>`
     );
   }
 
