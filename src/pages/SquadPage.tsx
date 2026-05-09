@@ -103,6 +103,12 @@ export function SquadPage() {
           Members
         </span>
         <Link
+          to={`/squads/${du.id}/${rt.id}/${sq.id}/editor`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          Editor
+        </Link>
+        <Link
           to={`/squads/${du.id}/${rt.id}/${sq.id}/onboarding`}
           className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
         >
