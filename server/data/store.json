@@ -541,7 +541,8 @@
                   {
                     "personId": "p10",
                     "role": "Squad Member",
-                    "isScheduledOffboarding": false
+                    "isScheduledOffboarding": false,
+                    "allocationPercentage": 0
                   },
                   {
                     "personId": "p11",
