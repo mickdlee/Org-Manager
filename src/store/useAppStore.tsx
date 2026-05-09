@@ -1,12 +1,13 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   useCallback,
   type ReactNode,
 } from 'react';
 import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate, DeliveryUnitOKR, OpenPosition } from '../types';
-import { loadData, saveData, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
+import { loadData, saveData, syncAppDataFromServer, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
 import { DEFAULT_SQUAD_TEMPLATE_NAME, DEFAULT_SQUAD_TEMPLATE_ROLES } from '../utils/defaults';
 
 interface AppStoreContextValue {
@@ -73,6 +74,21 @@ const AppStoreContext = createContext<AppStoreContextValue | null>(null);
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => loadData());
+
+  useEffect(() => {
+    let isMounted = true;
+    const hydrate = async () => {
+      const synced = await syncAppDataFromServer(data);
+      if (isMounted) {
+        setData(synced);
+      }
+    };
+    void hydrate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const exportAllData = useCallback((): AppData => {
     return JSON.parse(JSON.stringify(data)) as AppData;

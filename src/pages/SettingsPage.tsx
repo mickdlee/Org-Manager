@@ -96,18 +96,49 @@ function isValidBackupData(value: unknown): value is AppData {
 }
 
 export function SettingsPage() {
-  const { isAdmin, createUser } = useAuth();
+  const { isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<'backup' | 'sample' | 'financials' | 'templates' | 'roles' | 'users'>('backup');
+
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
+
+  const tabs: Array<{ key: 'backup' | 'sample' | 'financials' | 'templates' | 'roles' | 'users'; label: string }> = [
+    { key: 'backup', label: 'Data Backup' },
+    { key: 'sample', label: 'Sample Data' },
+    { key: 'financials', label: 'Financial Visibility' },
+    { key: 'templates', label: 'Squad Templates' },
+    { key: 'roles', label: 'Role Types' },
+    { key: 'users', label: 'Users' },
+  ];
 
   return (
     <Layout title="Settings">
-      <div className="max-w-xl space-y-6">
-        <DataBackupSection />
-        <SampleDataSection />
-        <FinancialVisibilitySection />
-        <SquadTemplatesSection />
-        <RoleConfigSection />
-        <CreateUserSection createUser={createUser} />
+      <div className="max-w-4xl space-y-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-2">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === tab.key
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          {activeTab === 'backup' && <DataBackupSection />}
+          {activeTab === 'sample' && <SampleDataSection />}
+          {activeTab === 'financials' && <FinancialVisibilitySection />}
+          {activeTab === 'templates' && <SquadTemplatesSection />}
+          {activeTab === 'roles' && <RoleConfigSection />}
+          {activeTab === 'users' && <UserAdministrationSection />}
+        </div>
       </div>
     </Layout>
   );
@@ -361,28 +392,90 @@ function RoleLayerEditor({ label, description, roles, onAdd, onRemove }: RoleLay
   );
 }
 
-// ── Create User ──────────────────────────────────────────────────────────────
+// ── User Administration ─────────────────────────────────────────────────────
 
-function CreateUserSection({ createUser }: { createUser: (username: string, password: string, role: 'admin' | 'viewer') => Promise<void> }) {
+function UserAdministrationSection() {
+  const { users, session, createUser, updateUser, deleteUser } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'viewer'>('viewer');
+
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editRole, setEditRole] = useState<'admin' | 'viewer'>('viewer');
+
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const sortedUsers = [...users].sort((a, b) => a.username.localeCompare(b.username));
+  const editTarget = sortedUsers.find((u) => u.id === editTargetId) ?? null;
+  const deleteTarget = sortedUsers.find((u) => u.id === deleteTargetId) ?? null;
 
   const handleSubmit = async () => {
     setError(''); setSuccess('');
     if (!username.trim()) { setError('Username is required.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    await createUser(username.trim(), password, role);
-    setUsername(''); setPassword('');
-    setSuccess(`User "${username.trim()}" created.`);
+    try {
+      await createUser(username.trim(), password, role);
+      setUsername(''); setPassword('');
+      setSuccess(`User "${username.trim()}" created.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create user.');
+    }
+  };
+
+  const openEdit = (id: string) => {
+    const target = sortedUsers.find((u) => u.id === id);
+    if (!target) return;
+    setEditTargetId(id);
+    setEditUsername(target.username);
+    setEditPassword('');
+    setEditRole(target.role);
+    setError('');
+    setSuccess('');
+  };
+
+  const saveEdit = async () => {
+    if (!editTargetId) return;
+    setError('');
+    setSuccess('');
+    try {
+      await updateUser(editTargetId, {
+        username: editUsername,
+        role: editRole,
+        password: editPassword || undefined,
+      });
+      setEditTargetId(null);
+      setSuccess('User updated successfully.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update user.');
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTargetId) return;
+    setError('');
+    setSuccess('');
+    try {
+      deleteUser(deleteTargetId);
+      const deletedWasCurrent = session?.userId === deleteTargetId;
+      setDeleteTargetId(null);
+      setSuccess(deletedWasCurrent ? 'Your account was deleted and you have been signed out.' : 'User deleted successfully.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete user.');
+    }
   };
 
   return (
     <Card>
-      <h2 className="font-semibold text-gray-800 mb-4">Create New User</h2>
-      <div className="space-y-4">
+      <h2 className="font-semibold text-gray-800 mb-1">User Administration</h2>
+      <p className="text-xs text-gray-500 mb-4">Create, edit, and remove user accounts.</p>
+
+      <div className="space-y-4 mb-5">
+        <h3 className="text-sm font-semibold text-gray-700">Create New User</h3>
         <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. jsmith" />
         <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" />
         <div className="flex flex-col gap-1">
@@ -396,10 +489,96 @@ function CreateUserSection({ createUser }: { createUser: (username: string, pass
             <option value="admin">Admin (full access)</option>
           </select>
         </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        {success && <p className="text-sm text-green-600">{success}</p>}
         <Button onClick={handleSubmit}>Create User</Button>
       </div>
+
+      <div className="border-t border-gray-200 pt-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Existing Users</h3>
+        {sortedUsers.length === 0 ? (
+          <p className="text-sm text-gray-500">No users found.</p>
+        ) : (
+          <div className="border border-gray-200 rounded overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Username</th>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Role</th>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
+                  <th className="px-3 py-2 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedUsers.map((u) => (
+                  <tr key={u.id} className="border-b border-gray-100 last:border-0 even:bg-gray-50/40">
+                    <td className="px-3 py-2 text-gray-800">{u.username}</td>
+                    <td className="px-3 py-2 text-gray-700">{u.role === 'admin' ? 'Admin' : 'Viewer'}</td>
+                    <td className="px-3 py-2 text-gray-600">{session?.userId === u.id ? 'Current user' : '—'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(u.id)}>Edit</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteTargetId(u.id)}>Delete</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {editTarget && (
+        <Modal
+          title={`Edit User: ${editTarget.username}`}
+          onClose={() => setEditTargetId(null)}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setEditTargetId(null)}>Cancel</Button>
+              <Button onClick={saveEdit}>Save Changes</Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <Input
+              label="Username"
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+              placeholder="e.g. jsmith"
+            />
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Role</label>
+              <select
+                value={editRole}
+                onChange={(e) => setEditRole(e.target.value as 'admin' | 'viewer')}
+                className="block w-full rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+              >
+                <option value="viewer">Viewer (read-only)</option>
+                <option value="admin">Admin (full access)</option>
+              </select>
+            </div>
+            <Input
+              label="Reset Password (Optional)"
+              type="password"
+              value={editPassword}
+              onChange={(e) => setEditPassword(e.target.value)}
+              placeholder="Leave blank to keep current password"
+            />
+          </div>
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete User"
+          message={`Delete user "${deleteTarget.username}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        {success && <p className="text-sm text-green-600">{success}</p>}
     </Card>
   );
 }

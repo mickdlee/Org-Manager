@@ -81,18 +81,22 @@ export function SquadPage() {
         <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
           Members
         </span>
-        <Link
-          to={`/squads/${du.id}/${rt.id}/${sq.id}/editor`}
-          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          Editor
-        </Link>
-        <Link
-          to={`/squads/${du.id}/${rt.id}/${sq.id}/onboarding`}
-          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          Onboarding
-        </Link>
+        {isAdmin && (
+          <>
+            <Link
+              to={`/squads/${du.id}/${rt.id}/${sq.id}/editor`}
+              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              Editor
+            </Link>
+            <Link
+              to={`/squads/${du.id}/${rt.id}/${sq.id}/onboarding`}
+              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              Onboarding
+            </Link>
+          </>
+        )}
         <div className="ml-auto pb-2">
           {isAdmin && (
             <Button size="sm" variant="ghost" onClick={() => setShowEditTeam(true)}>

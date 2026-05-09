@@ -7,6 +7,55 @@ const DATA_KEY = 'org_manager_data';
 const USERS_KEY = 'org_manager_users';
 const SESSION_KEY = 'org_manager_session';
 
+const APP_DATA_ENDPOINT = '/api/app-data';
+const USERS_ENDPOINT = '/api/users';
+
+async function getRemoteAppData(): Promise<AppData | null> {
+  try {
+    const res = await fetch(APP_DATA_ENDPOINT);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { data?: AppData | null };
+    return body.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function putRemoteAppData(data: AppData): Promise<void> {
+  try {
+    await fetch(APP_DATA_ENDPOINT, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // best-effort persistence
+  }
+}
+
+async function getRemoteUsers(): Promise<AppUser[] | null> {
+  try {
+    const res = await fetch(USERS_ENDPOINT);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { users?: AppUser[] };
+    return Array.isArray(body.users) ? body.users : [];
+  } catch {
+    return null;
+  }
+}
+
+async function putRemoteUsers(users: AppUser[]): Promise<void> {
+  try {
+    await fetch(USERS_ENDPOINT, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(users),
+    });
+  } catch {
+    // best-effort persistence
+  }
+}
+
 function createSafeFallbackData(): AppData {
   return {
     deliveryUnits: [],
@@ -169,6 +218,18 @@ export function resetToLargeSampleData(): AppData {
 
 export function saveData(data: AppData): void {
   localStorage.setItem(DATA_KEY, JSON.stringify(data));
+  void putRemoteAppData(data);
+}
+
+export async function syncAppDataFromServer(localFallback: AppData): Promise<AppData> {
+  const remote = await getRemoteAppData();
+  if (remote) {
+    localStorage.setItem(DATA_KEY, JSON.stringify(remote));
+    return loadData();
+  }
+
+  await putRemoteAppData(localFallback);
+  return localFallback;
 }
 
 // ── Users ────────────────────────────────────────────────────────────────────
@@ -185,6 +246,18 @@ export function loadUsers(): AppUser[] {
 
 export function saveUsers(users: AppUser[]): void {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  void putRemoteUsers(users);
+}
+
+export async function syncUsersFromServer(localFallback: AppUser[]): Promise<AppUser[]> {
+  const remote = await getRemoteUsers();
+  if (remote) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(remote));
+    return remote;
+  }
+
+  await putRemoteUsers(localFallback);
+  return localFallback;
 }
 
 // ── Session ──────────────────────────────────────────────────────────────────

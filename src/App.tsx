@@ -11,6 +11,13 @@ import { SquadEditorPage } from './pages/SquadEditorPage';
 import { SquadOnboardingPage } from './pages/SquadOnboardingPage';
 import { PeoplePage } from './pages/PeoplePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { useAuth } from './hooks/useAuth';
+
+function RequireAdmin({ children }: { children: JSX.Element }) {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
 export default function App() {
   return (
@@ -21,11 +28,32 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/delivery-units/:id" element={<DeliveryUnitPage />} />
-            <Route path="/delivery-units/:duId/onboarding" element={<DeliveryUnitOnboardingPage />} />
+            <Route
+              path="/delivery-units/:duId/onboarding"
+              element={
+                <RequireAdmin>
+                  <DeliveryUnitOnboardingPage />
+                </RequireAdmin>
+              }
+            />
             <Route path="/release-trains/:duId/:rtId" element={<ReleaseTrainPage />} />
             <Route path="/squads/:duId/:rtId/:sqId" element={<SquadPage />} />
-            <Route path="/squads/:duId/:rtId/:sqId/editor" element={<SquadEditorPage />} />
-            <Route path="/squads/:duId/:rtId/:sqId/onboarding" element={<SquadOnboardingPage />} />
+            <Route
+              path="/squads/:duId/:rtId/:sqId/editor"
+              element={
+                <RequireAdmin>
+                  <SquadEditorPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/squads/:duId/:rtId/:sqId/onboarding"
+              element={
+                <RequireAdmin>
+                  <SquadOnboardingPage />
+                </RequireAdmin>
+              }
+            />
             <Route path="/people" element={<PeoplePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

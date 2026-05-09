@@ -67,12 +67,14 @@ export function DeliveryUnitPage() {
         <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
           Overview
         </span>
-        <Link
-          to={`/delivery-units/${du.id}/onboarding`}
-          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          Onboarding
-        </Link>
+        {isAdmin && (
+          <Link
+            to={`/delivery-units/${du.id}/onboarding`}
+            className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            Onboarding
+          </Link>
+        )}
       </div>
 
       {du.description && <p className="text-sm text-gray-500 mb-6">{du.description}</p>}
