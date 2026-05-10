@@ -4,6 +4,7 @@ import {
   assignmentDailyCost,
   assignmentsDailyCost,
   duDailyCost,
+  formatCost,
   personAllocationBreakdown,
   personTotalAllocationPercent,
 } from '../cost';
@@ -96,5 +97,16 @@ describe('cost utilities', () => {
     const entries = personAllocationBreakdown(data, 'p1');
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ duName: 'DU', rtName: 'RT', sqName: 'Squad A', allocation: 60 });
+  });
+
+  it('handles missing person/day rate and default allocation percentage', () => {
+    expect(assignmentDailyCost(undefined, { personId: 'p1', role: 'Developer' })).toBe(0);
+
+    const person: Person = { id: 'p1', name: 'Alice', email: 'a@example.com', dayRate: 900 };
+    expect(assignmentDailyCost(person, { personId: 'p1', role: 'Developer' })).toBe(900);
+  });
+
+  it('formats currency as rounded USD with commas', () => {
+    expect(formatCost(1234.6)).toBe('$1,235');
   });
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppData } from '../../types';
 import {
   clearSession,
@@ -10,6 +10,8 @@ import {
   saveData,
   saveSession,
   saveUsers,
+  syncAppDataFromServer,
+  syncUsersFromServer,
 } from '../storage';
 
 const DATA_KEY = 'org_manager_data';
@@ -73,6 +75,10 @@ describe('storage.loadData', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('seeds sample data when no saved data exists', () => {
@@ -321,12 +327,95 @@ describe('storage.loadData', () => {
 
     expect(defaultTemplateCount).toBe(1);
   });
+
+  it('normalizes financial records, day rates, deliverables, and adjustments during migration', () => {
+    const raw = minimalValidData() as unknown as {
+      deliveryUnits: Array<Record<string, unknown>>;
+    };
+
+    const du = raw.deliveryUnits[0];
+    du.openPositions = [
+      { id: 'du-op', title: 'DU Op', priority: 'Low', dayRate: -20 },
+      { id: 'du-op2', title: 'DU Op 2', priority: 'Low', dayRate: 500 },
+    ];
+    du.fundedDeliverables = [
+      { id: 'fd1', name: 'D1', fundingAmount: -50 },
+      { id: 'fd2', code: 'FD2', name: 'D2', owner: 'owner', status: 'Planned', fundingAmount: 1200 },
+    ];
+    du.financialsByMonth = {
+      '2026-06': {
+        squadAllocations: {
+          sq1: {
+            actual: undefined,
+            forecast: { fd1: 100 },
+          },
+        },
+        squadAdjustments: {
+          sq1: [
+            null,
+            { type: 'financial', amount: 'bad', reason: '  credit  ' },
+            { id: 'adj-person', type: 'person', personId: 'p1', daysReduced: -2, reason: '  leave  ' },
+            { id: 'adj-bad', type: 'person', personId: 123, daysReduced: 2, reason: 'x' },
+          ],
+        },
+      },
+    };
+
+    const releaseTrains = du.releaseTrains as Array<Record<string, unknown>>;
+    releaseTrains[0].openPositions = [
+      { id: 'rt-op', title: 'RT Op', priority: 'Low', dayRate: 'bad' },
+    ];
+    const squads = releaseTrains[0].squads as Array<Record<string, unknown>>;
+    squads[0].onboarding = {
+      candidates: [],
+      openPositions: [
+        { id: 'sq-op', title: 'SQ Op', priority: 'Low', dayRate: null },
+      ],
+    };
+
+    localStorage.setItem(DATA_KEY, JSON.stringify(raw));
+
+    const loaded = loadData();
+    const loadedDu = loaded.deliveryUnits[0];
+    const loadedMonth = loadedDu.financialsByMonth?.['2026-06'];
+    const adjustments = loadedMonth?.squadAdjustments?.sq1 ?? [];
+
+    expect(loadedDu.openPositions?.[0].dayRate).toBeUndefined();
+    expect(loadedDu.openPositions?.[1].dayRate).toBe(500);
+    expect(loadedDu.releaseTrains[0].openPositions?.[0].dayRate).toBeUndefined();
+    expect(loadedDu.releaseTrains[0].squads[0].onboarding?.openPositions[0].dayRate).toBeUndefined();
+
+    expect(loadedDu.fundedDeliverables?.[0]).toMatchObject({
+      code: '',
+      owner: '',
+      status: 'Planned',
+      fundingAmount: 0,
+    });
+    expect(loadedDu.fundedDeliverables?.[1].fundingAmount).toBe(1200);
+
+    expect(loadedMonth?.squadAllocations.sq1.actual).toEqual({});
+    expect(loadedMonth?.squadAllocations.sq1.forecast).toEqual({ fd1: 100 });
+
+    expect(adjustments).toHaveLength(2);
+    expect(adjustments[0]).toMatchObject({ type: 'financial', amount: 0, reason: 'credit' });
+    expect(adjustments[1]).toMatchObject({
+      id: 'adj-person',
+      type: 'person',
+      personId: 'p1',
+      daysReduced: 0,
+      reason: 'leave',
+    });
+  });
 });
 
 describe('storage auxiliary helpers', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('saves and loads users', () => {
@@ -338,6 +427,29 @@ describe('storage auxiliary helpers', () => {
   it('returns empty users list for corrupt stored users data', () => {
     localStorage.setItem(USERS_KEY, '{bad-json');
     expect(loadUsers()).toEqual([]);
+  });
+
+  it('returns empty users list when stored users JSON is not an array', () => {
+    localStorage.setItem(USERS_KEY, JSON.stringify({ users: [] }));
+    expect(loadUsers()).toEqual([]);
+  });
+
+  it('normalizes loaded users and filters invalid records', () => {
+    localStorage.setItem(
+      USERS_KEY,
+      JSON.stringify([
+        { id: 'u1', username: 'admin', passwordHash: 'hash', role: 'admin', salaryId: '  S1  ' },
+        { id: 42, username: 'viewer', passwordHash: 'hash2', role: 'unknown' },
+        { id: 'u3', username: '   ', passwordHash: 'hash3', role: 'viewer' },
+        { id: 'u4', username: 'org', passwordHash: '', role: 'orgManager' },
+      ]),
+    );
+
+    const users = loadUsers();
+    expect(users).toHaveLength(2);
+    expect(users[0]).toMatchObject({ id: 'u1', role: 'admin', salaryId: 'S1' });
+    expect(users[1].username).toBe('viewer');
+    expect(users[1].role).toBe('viewer');
   });
 
   it('saves, loads, and clears session', () => {
@@ -352,6 +464,25 @@ describe('storage auxiliary helpers', () => {
 
   it('returns null for corrupt stored session data', () => {
     sessionStorage.setItem(SESSION_KEY, '{bad-json');
+    expect(loadSession()).toBeNull();
+  });
+
+  it('normalizes session role and salaryId when loading', () => {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ userId: 'u1', username: 'alex', role: 'something-else', salaryId: '   ' }),
+    );
+
+    expect(loadSession()).toEqual({
+      userId: 'u1',
+      username: 'alex',
+      role: 'viewer',
+      salaryId: undefined,
+    });
+  });
+
+  it('returns null for malformed session payload', () => {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ userId: 1, username: 'alex' }));
     expect(loadSession()).toBeNull();
   });
 
@@ -373,5 +504,56 @@ describe('storage auxiliary helpers', () => {
 
     const persisted = JSON.parse(localStorage.getItem(DATA_KEY) ?? '{}') as AppData;
     expect(persisted.deliveryUnits).toHaveLength(20);
+  });
+
+  it('syncs app data from remote when available', async () => {
+    const remote = minimalValidData() as unknown as Record<string, unknown>;
+    remote.uiSettings = { showFinancials: 'yes' };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: remote }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await syncAppDataFromServer(minimalValidData());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.uiSettings.showFinancials).toBe(true);
+  });
+
+  it('falls back to pushing local app data when remote fetch is unavailable', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const fallback = minimalValidData();
+    const result = await syncAppDataFromServer(fallback);
+
+    expect(result).toBe(fallback);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'PUT' });
+  });
+
+  it('syncs users from remote and falls back to push local users when needed', async () => {
+    const local = [{ id: 'local', username: 'local', passwordHash: 'h', role: 'viewer' as const }];
+    const remote = [{ id: 'remote', username: 'remote', passwordHash: 'h2', role: 'admin' as const }];
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ users: remote }) })
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const fromRemote = await syncUsersFromServer(local);
+    expect(fromRemote).toEqual(remote);
+
+    const fallback = await syncUsersFromServer(local);
+    expect(fallback).toEqual(local);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({ method: 'PUT' });
   });
 });
