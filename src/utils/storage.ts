@@ -1,4 +1,4 @@
-import type { AppData, AppUser, Assignment, Session } from '../types';
+import type { AppData, AppUser, Assignment, Session, SquadFinancialAdjustment } from '../types';
 import { DEFAULT_DELIVERY_UNIT_ROLES, DEFAULT_RELEASE_TRAIN_ROLES, DEFAULT_SQUAD_ROLES } from '../types';
 import { generateLargeSeedData, generateSeedData } from './seed';
 import { cloneDefaultSquadTemplate, DEFAULT_SQUAD_TEMPLATE_NAME } from './defaults';
@@ -24,6 +24,11 @@ function normalizeSalaryId(value: unknown): string | undefined {
 function normalizeDayRate(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return undefined;
   return value;
+}
+
+function normalizeAdjustmentReason(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.trim();
 }
 
 async function getRemoteAppData(): Promise<AppData | null> {
@@ -208,7 +213,57 @@ export function loadData(): AppData {
               },
             ]),
           );
-          return [month, { squadAllocations: normalizedSquadAllocations }];
+
+          const normalizedSquadAdjustments = Object.fromEntries(
+            Object.entries(monthRecord?.squadAdjustments ?? {}).map(([sqId, adjustments]) => {
+              const normalized: SquadFinancialAdjustment[] = [];
+
+              for (const adjustment of Array.isArray(adjustments) ? adjustments : []) {
+                if (!adjustment || typeof adjustment !== 'object') continue;
+
+                const id = typeof adjustment.id === 'string' ? adjustment.id : crypto.randomUUID();
+                const reason = normalizeAdjustmentReason(adjustment.reason);
+
+                if (adjustment.type === 'financial') {
+                  const amount =
+                    typeof adjustment.amount === 'number' && Number.isFinite(adjustment.amount)
+                      ? adjustment.amount
+                      : 0;
+                  normalized.push({
+                    id,
+                    type: 'financial',
+                    amount,
+                    reason,
+                  });
+                  continue;
+                }
+
+                if (adjustment.type === 'person' && typeof adjustment.personId === 'string') {
+                  const daysReduced =
+                    typeof adjustment.daysReduced === 'number' && Number.isFinite(adjustment.daysReduced)
+                      ? Math.max(0, adjustment.daysReduced)
+                      : 0;
+                  normalized.push({
+                    id,
+                    type: 'person',
+                    personId: adjustment.personId,
+                    daysReduced,
+                    reason,
+                  });
+                }
+              }
+
+              return [sqId, normalized];
+            }),
+          );
+
+          return [
+            month,
+            {
+              squadAllocations: normalizedSquadAllocations,
+              squadAdjustments: normalizedSquadAdjustments,
+            },
+          ];
         }),
       ),
       releaseTrains: du.releaseTrains.map((rt) => ({

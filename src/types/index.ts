@@ -97,8 +97,30 @@ export interface SquadMonthFinancialAllocation {
   forecast: DeliverableAllocationSet;
 }
 
+export interface FinancialAmountAdjustment {
+  id: string;
+  type: 'financial';
+  amount: number;
+  reason: string;
+}
+
+export interface PersonDaysAdjustment {
+  id: string;
+  type: 'person';
+  personId: string;
+  daysReduced: number;
+  reason: string;
+}
+
+export type SquadFinancialAdjustment = FinancialAmountAdjustment | PersonDaysAdjustment;
+
+export type NewSquadFinancialAdjustment =
+  | Omit<FinancialAmountAdjustment, 'id'>
+  | Omit<PersonDaysAdjustment, 'id'>;
+
 export interface FinancialMonthRecord {
   squadAllocations: Record<string, SquadMonthFinancialAllocation>;
+  squadAdjustments?: Record<string, SquadFinancialAdjustment[]>;
 }
 
 export interface SquadOnboarding {

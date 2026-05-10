@@ -97,7 +97,7 @@ export function DeliveryUnitFinancialsPage() {
           <div className="border border-gray-200 rounded p-3">
             <p className="text-gray-500 uppercase tracking-wide">Run Out Date</p>
             <p className={`text-base font-semibold ${fyProjection.totals.runOutMonthKey ? 'text-red-600' : 'text-emerald-700'}`}>
-              {fyProjection.totals.runOutMonthKey ? formatMonthLabel(fyProjection.totals.runOutMonthKey) : 'Within FY Budget'}
+              {fyProjection.totals.runOutMonthKey ? formatMonthLabel(fyProjection.totals.runOutMonthKey) : 'Not Available'}
             </p>
           </div>
         </div>
@@ -207,7 +207,7 @@ export function DeliveryUnitFinancialsPage() {
                       {formatCost(row.projectedEndOfYearRemaining)}
                     </td>
                     <td className={`px-3 py-2 ${row.runOutMonthKey ? 'text-red-600' : 'text-emerald-700'}`}>
-                      {row.runOutMonthKey ? formatMonthLabel(row.runOutMonthKey) : 'Within FY Budget'}
+                      {row.runOutMonthKey ? formatMonthLabel(row.runOutMonthKey) : 'Not Available'}
                     </td>
                   </tr>
                 ))}
@@ -223,7 +223,7 @@ export function DeliveryUnitFinancialsPage() {
                     {formatCost(fyProjection.totals.projectedEndOfYearRemaining)}
                   </td>
                   <td className={`px-3 py-2 ${fyProjection.totals.runOutMonthKey ? 'text-red-600' : 'text-emerald-700'}`}>
-                    {fyProjection.totals.runOutMonthKey ? formatMonthLabel(fyProjection.totals.runOutMonthKey) : 'Within FY Budget'}
+                    {fyProjection.totals.runOutMonthKey ? formatMonthLabel(fyProjection.totals.runOutMonthKey) : 'Not Available'}
                   </td>
                 </tr>
               </tbody>

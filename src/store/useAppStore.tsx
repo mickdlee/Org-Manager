@@ -21,6 +21,8 @@ import type {
   OpenPosition,
   FundedDeliverable,
   DeliverableAllocationSet,
+  SquadFinancialAdjustment,
+  NewSquadFinancialAdjustment,
 } from '../types';
 import { loadData, saveData, syncAppDataFromServer, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
 import { DEFAULT_SQUAD_TEMPLATE_NAME, DEFAULT_SQUAD_TEMPLATE_ROLES } from '../utils/defaults';
@@ -50,6 +52,13 @@ interface AppStoreContextValue {
     kind: 'actual' | 'forecast',
     allocation: DeliverableAllocationSet,
   ) => void;
+  addSquadFinancialAdjustment: (
+    duId: string,
+    month: string,
+    sqId: string,
+    adjustment: NewSquadFinancialAdjustment,
+  ) => void;
+  deleteSquadFinancialAdjustment: (duId: string, month: string, sqId: string, adjustmentId: string) => void;
   // Release Trains
   addReleaseTrain: (duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>) => ReleaseTrain;
   updateReleaseTrain: (duId: string, rtId: string, rt: Partial<Pick<ReleaseTrain, 'name' | 'description'>>) => void;
@@ -353,6 +362,78 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                       ...squadAlloc,
                       [kind]: allocation,
                     },
+                  },
+                },
+              },
+            };
+          }),
+        };
+        saveData(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const addSquadFinancialAdjustment = useCallback(
+    (
+      duId: string,
+      month: string,
+      sqId: string,
+      adjustment: NewSquadFinancialAdjustment,
+    ) => {
+      setData((prev) => {
+        const next = {
+          ...prev,
+          deliveryUnits: prev.deliveryUnits.map((du) => {
+            if (du.id !== duId) return du;
+
+            const monthRecord = du.financialsByMonth?.[month] ?? { squadAllocations: {}, squadAdjustments: {} };
+            const existing = monthRecord.squadAdjustments?.[sqId] ?? [];
+            const nextAdjustment: SquadFinancialAdjustment = { id: crypto.randomUUID(), ...adjustment };
+
+            return {
+              ...du,
+              financialsByMonth: {
+                ...(du.financialsByMonth ?? {}),
+                [month]: {
+                  ...monthRecord,
+                  squadAdjustments: {
+                    ...(monthRecord.squadAdjustments ?? {}),
+                    [sqId]: [...existing, nextAdjustment],
+                  },
+                },
+              },
+            };
+          }),
+        };
+        saveData(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const deleteSquadFinancialAdjustment = useCallback(
+    (duId: string, month: string, sqId: string, adjustmentId: string) => {
+      setData((prev) => {
+        const next = {
+          ...prev,
+          deliveryUnits: prev.deliveryUnits.map((du) => {
+            if (du.id !== duId) return du;
+
+            const monthRecord = du.financialsByMonth?.[month] ?? { squadAllocations: {}, squadAdjustments: {} };
+            const existing = monthRecord.squadAdjustments?.[sqId] ?? [];
+
+            return {
+              ...du,
+              financialsByMonth: {
+                ...(du.financialsByMonth ?? {}),
+                [month]: {
+                  ...monthRecord,
+                  squadAdjustments: {
+                    ...(monthRecord.squadAdjustments ?? {}),
+                    [sqId]: existing.filter((adjustment) => adjustment.id !== adjustmentId),
                   },
                 },
               },
@@ -956,6 +1037,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addDeliveryUnitOKR, updateDeliveryUnitOKR, deleteDeliveryUnitOKR,
         addFundedDeliverable, updateFundedDeliverable, deleteFundedDeliverable,
         setSquadFinancialAllocation,
+        addSquadFinancialAdjustment, deleteSquadFinancialAdjustment,
         addReleaseTrain, updateReleaseTrain, deleteReleaseTrain,
         addSquad, updateSquad, deleteSquad,
         addAssignmentToDU, removeAssignmentFromDU, updateDUAssignment,

@@ -348,7 +348,7 @@
             "status": "In Progress",
             "startDate": "2026-01-01",
             "endDate": "2026-12-31",
-            "fundingAmount": 4200000
+            "fundingAmount": 420000
           },
           {
             "id": "fd-du01-2",
@@ -358,7 +358,7 @@
             "status": "Planned",
             "startDate": "2026-02-01",
             "endDate": "2026-11-30",
-            "fundingAmount": 3000000
+            "fundingAmount": 400000
           }
         ],
         "financialsByMonth": {
@@ -366,12 +366,12 @@
             "squadAllocations": {
               "sq01": {
                 "actual": {
-                  "fd-du01-1": 60,
-                  "fd-du01-2": 40
+                  "fd-du01-1": 70,
+                  "fd-du01-2": 30
                 },
                 "forecast": {
-                  "fd-du01-1": 65,
-                  "fd-du01-2": 35
+                  "fd-du01-1": 60,
+                  "fd-du01-2": 40
                 }
               },
               "sq02": {
@@ -414,128 +414,66 @@
                   "fd-du01-2": 70
                 }
               }
-            }
-          },
-          "2025-10": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
-            }
-          },
-          "2025-11": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
-            }
-          },
-          "2025-12": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
-            }
-          },
-          "2026-01": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
-            }
-          },
-          "2026-02": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
-            }
-          },
-          "2026-03": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
-            }
-          },
-          "2026-04": {
-            "squadAllocations": {
-              "sq01": {
-                "actual": {
-                  "fd-du01-1": 50,
-                  "fd-du01-2": 50
-                },
-                "forecast": {}
-              }
+            },
+            "squadAdjustments": {
+              "sq01": [
+                {
+                  "id": "905c69c6-4e6a-4641-96ac-567970e44452",
+                  "type": "person",
+                  "personId": "p07",
+                  "daysReduced": 4,
+                  "reason": "Sick"
+                }
+              ]
             }
           },
           "2026-06": {
             "squadAllocations": {
               "sq01": {
-                "actual": {
+                "actual": {},
+                "forecast": {
                   "fd-du01-1": 60,
                   "fd-du01-2": 40
-                },
-                "forecast": {}
+                }
               }
-            }
+            },
+            "squadAdjustments": {}
           },
           "2026-07": {
             "squadAllocations": {
               "sq01": {
-                "actual": {
+                "actual": {},
+                "forecast": {
                   "fd-du01-1": 60,
                   "fd-du01-2": 40
-                },
-                "forecast": {}
+                }
               }
-            }
+            },
+            "squadAdjustments": {}
           },
           "2026-08": {
             "squadAllocations": {
               "sq01": {
-                "actual": {
+                "actual": {},
+                "forecast": {
                   "fd-du01-1": 60,
                   "fd-du01-2": 40
-                },
-                "forecast": {}
+                }
               }
-            }
+            },
+            "squadAdjustments": {}
           },
           "2026-09": {
             "squadAllocations": {
               "sq01": {
-                "actual": {
-                  "fd-du01-1": 60,
-                  "fd-du01-2": 40
-                },
-                "forecast": {}
+                "actual": {},
+                "forecast": {
+                  "fd-du01-1": 15,
+                  "fd-du01-2": 85
+                }
               }
-            }
+            },
+            "squadAdjustments": {}
           }
         },
         "onboarding": {
@@ -924,7 +862,8 @@
                   "fd-du02-2": 78
                 }
               }
-            }
+            },
+            "squadAdjustments": {}
           }
         },
         "onboarding": {

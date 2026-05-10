@@ -8,6 +8,9 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    watch: {
+      ignored: ['**/server/data/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8787',
