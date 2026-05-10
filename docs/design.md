@@ -153,12 +153,22 @@ interface DeliveryUnit {
   assignments: Assignment[];
   releaseTrains: ReleaseTrain[];
   onboarding?: DeliveryUnitOnboarding;
+  fundedDeliverables?: FundedDeliverable[];
+  financialsByMonth?: Record<string, FinancialMonthRecord>; // key: YYYY-MM
 }
 ```
 
 ### Allocation design
 
 Allocation (`allocationPercentage`) is tracked **only on squad-level assignments**. DU and RT assignments intentionally omit it — they represent organisational membership, not fractional capacity. This keeps cost and allocation calculations unambiguous: capacity is always consumed at the squad level.
+
+### Monthly funded deliverables financial model
+
+Delivery Units can define funded deliverables and month-specific financial allocation records:
+
+- `fundedDeliverables[]` stores DU-level deliverable metadata and funding targets.
+- `financialsByMonth[YYYY-MM]` stores per-squad Actual and Forecast percentage splits across deliverables.
+- `OpenPosition.dayRate` (DU, RT, and Squad onboarding positions) is used for forecast cost modeling.
 
 ### Role configuration
 
@@ -239,6 +249,15 @@ monthlyCost       = dailyCost × 22 working days
 
 `personAllocationBreakdown(data, personId)` returns the same data as a structured list (`{ duName, rtName, sqName, allocation }[]`) for use in hover tooltips.
 
+### Financial rollups (`src/utils/financials.ts`)
+
+Monthly funded-deliverable calculations are implemented as pure utilities:
+
+- Squads provide Actual and Forecast percentage splits that must each total 100%.
+- Squad assignment costs are distributed by those percentages.
+- DU and RT assignment/open-position costs are auto-distributed using the aggregated weighted squad mix.
+- Outputs include per-deliverable Actual/Forecast totals and variance versus funded amount.
+
 ---
 
 ## 10. Routing
@@ -250,6 +269,7 @@ All routes are defined in `src/App.tsx`. The URL structure mirrors the entity hi
 | `/login` | `LoginPage` |
 | `/dashboard` | `DashboardPage` |
 | `/delivery-units/:id` | `DeliveryUnitPage` |
+| `/delivery-units/:duId/financials` | `DeliveryUnitFinancialsPage` |
 | `/delivery-units/:duId/onboarding` | `DeliveryUnitOnboardingPage` |
 | `/release-trains/:duId/:rtId` | `ReleaseTrainPage` |
 | `/squads/:duId/:rtId/:sqId` | `SquadPage` |

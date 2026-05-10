@@ -6,7 +6,22 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { AppData, Person, DeliveryUnit, ReleaseTrain, Squad, Assignment, RoleConfig, SquadOnboarding, DeliveryUnitOnboarding, SquadTemplate, DeliveryUnitOKR, OpenPosition } from '../types';
+import type {
+  AppData,
+  Person,
+  DeliveryUnit,
+  ReleaseTrain,
+  Squad,
+  Assignment,
+  RoleConfig,
+  SquadOnboarding,
+  DeliveryUnitOnboarding,
+  SquadTemplate,
+  DeliveryUnitOKR,
+  OpenPosition,
+  FundedDeliverable,
+  DeliverableAllocationSet,
+} from '../types';
 import { loadData, saveData, syncAppDataFromServer, resetToSampleData as storageSeed, resetToLargeSampleData as storageLargeSeed } from '../utils/storage';
 import { DEFAULT_SQUAD_TEMPLATE_NAME, DEFAULT_SQUAD_TEMPLATE_ROLES } from '../utils/defaults';
 
@@ -25,6 +40,16 @@ interface AppStoreContextValue {
   addDeliveryUnitOKR: (duId: string, okr: Omit<DeliveryUnitOKR, 'id'>) => DeliveryUnitOKR;
   updateDeliveryUnitOKR: (duId: string, okrId: string, patch: Partial<Omit<DeliveryUnitOKR, 'id'>>) => void;
   deleteDeliveryUnitOKR: (duId: string, okrId: string) => void;
+  addFundedDeliverable: (duId: string, deliverable: Omit<FundedDeliverable, 'id'>) => FundedDeliverable;
+  updateFundedDeliverable: (duId: string, deliverableId: string, patch: Partial<Omit<FundedDeliverable, 'id'>>) => void;
+  deleteFundedDeliverable: (duId: string, deliverableId: string) => void;
+  setSquadFinancialAllocation: (
+    duId: string,
+    month: string,
+    sqId: string,
+    kind: 'actual' | 'forecast',
+    allocation: DeliverableAllocationSet,
+  ) => void;
   // Release Trains
   addReleaseTrain: (duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>) => ReleaseTrain;
   updateReleaseTrain: (duId: string, rtId: string, rt: Partial<Pick<ReleaseTrain, 'name' | 'description'>>) => void;
@@ -219,6 +244,127 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+
+  const addFundedDeliverable = useCallback((duId: string, deliverable: Omit<FundedDeliverable, 'id'>): FundedDeliverable => {
+    const nextDeliverable: FundedDeliverable = {
+      id: crypto.randomUUID(),
+      ...deliverable,
+    };
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? { ...du, fundedDeliverables: [...(du.fundedDeliverables ?? []), nextDeliverable] }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+    return nextDeliverable;
+  }, []);
+
+  const updateFundedDeliverable = useCallback((duId: string, deliverableId: string, patch: Partial<Omit<FundedDeliverable, 'id'>>) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) =>
+          du.id === duId
+            ? {
+                ...du,
+                fundedDeliverables: (du.fundedDeliverables ?? []).map((deliverable) =>
+                  deliverable.id === deliverableId ? { ...deliverable, ...patch } : deliverable,
+                ),
+              }
+            : du,
+        ),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const deleteFundedDeliverable = useCallback((duId: string, deliverableId: string) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        deliveryUnits: prev.deliveryUnits.map((du) => {
+          if (du.id !== duId) return du;
+
+          const financialsByMonth = Object.fromEntries(
+            Object.entries(du.financialsByMonth ?? {}).map(([month, monthRecord]) => [
+              month,
+              {
+                squadAllocations: Object.fromEntries(
+                  Object.entries(monthRecord.squadAllocations ?? {}).map(([sqId, allocation]) => [
+                    sqId,
+                    {
+                      actual: Object.fromEntries(
+                        Object.entries(allocation.actual ?? {}).filter(([id]) => id !== deliverableId),
+                      ),
+                      forecast: Object.fromEntries(
+                        Object.entries(allocation.forecast ?? {}).filter(([id]) => id !== deliverableId),
+                      ),
+                    },
+                  ]),
+                ),
+              },
+            ]),
+          );
+
+          return {
+            ...du,
+            fundedDeliverables: (du.fundedDeliverables ?? []).filter((deliverable) => deliverable.id !== deliverableId),
+            financialsByMonth,
+          };
+        }),
+      };
+      saveData(next);
+      return next;
+    });
+  }, []);
+
+  const setSquadFinancialAllocation = useCallback(
+    (
+      duId: string,
+      month: string,
+      sqId: string,
+      kind: 'actual' | 'forecast',
+      allocation: DeliverableAllocationSet,
+    ) => {
+      setData((prev) => {
+        const next = {
+          ...prev,
+          deliveryUnits: prev.deliveryUnits.map((du) => {
+            if (du.id !== duId) return du;
+
+            const monthRecord = du.financialsByMonth?.[month] ?? { squadAllocations: {} };
+            const squadAlloc = monthRecord.squadAllocations[sqId] ?? { actual: {}, forecast: {} };
+
+            return {
+              ...du,
+              financialsByMonth: {
+                ...(du.financialsByMonth ?? {}),
+                [month]: {
+                  squadAllocations: {
+                    ...monthRecord.squadAllocations,
+                    [sqId]: {
+                      ...squadAlloc,
+                      [kind]: allocation,
+                    },
+                  },
+                },
+              },
+            };
+          }),
+        };
+        saveData(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   // ── Release Trains ──────────────────────────────────────────────────────────
   const addReleaseTrain = useCallback((duId: string, rt: Omit<ReleaseTrain, 'id' | 'assignments' | 'squads'>): ReleaseTrain => {
@@ -808,6 +954,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addPerson, updatePerson, deletePerson,
         addDeliveryUnit, updateDeliveryUnit, deleteDeliveryUnit,
         addDeliveryUnitOKR, updateDeliveryUnitOKR, deleteDeliveryUnitOKR,
+        addFundedDeliverable, updateFundedDeliverable, deleteFundedDeliverable,
+        setSquadFinancialAllocation,
         addReleaseTrain, updateReleaseTrain, deleteReleaseTrain,
         addSquad, updateSquad, deleteSquad,
         addAssignmentToDU, removeAssignmentFromDU, updateDUAssignment,

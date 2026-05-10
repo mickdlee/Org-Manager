@@ -119,7 +119,9 @@ export function ReleaseTrainPage() {
 
                   <div className="flex-1 min-w-0 pt-0.5">
                     <p className="text-sm font-semibold text-amber-800 truncate">{pos.title}</p>
-                    <p className="text-xs text-amber-700/80">Priority: {pos.priority} · Allocation: {pos.allocationPercentage ?? 100}%</p>
+                    <p className="text-xs text-amber-700/80">
+                      Priority: {pos.priority} · Allocation: {pos.allocationPercentage ?? 100}% · Day Rate: {pos.dayRate ? `$${pos.dayRate}` : '—'}
+                    </p>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setAssignOpenPositionTarget(pos.id)}>
                     Assign Person
@@ -264,8 +266,8 @@ export function ReleaseTrainPage() {
         <OpenPositionFormModal
           title="Add Open Position"
           onClose={() => setShowCreateOpenPosition(false)}
-          onSubmit={(title, priority, allocation) => {
-            addRTOpenPosition(du.id, rt.id, { title, priority, allocationPercentage: allocation });
+          onSubmit={(title, priority, allocation, dayRate) => {
+            addRTOpenPosition(du.id, rt.id, { title, priority, allocationPercentage: allocation, dayRate });
             setShowCreateOpenPosition(false);
           }}
         />
@@ -389,11 +391,12 @@ function OpenPositionFormModal({
 }: {
   title: string;
   onClose: () => void;
-  onSubmit: (title: string, priority: 'Low' | 'Medium' | 'High', allocation: number) => void;
+  onSubmit: (title: string, priority: 'Low' | 'Medium' | 'High', allocation: number, dayRate?: number) => void;
 }) {
   const [posTitle, setPosTitle] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [allocation, setAllocation] = useState(100);
+  const [dayRate, setDayRate] = useState('');
   const [error, setError] = useState('');
 
   return (
@@ -411,7 +414,12 @@ function OpenPositionFormModal({
                 setError('Title is required.');
                 return;
               }
-              onSubmit(posTitle.trim(), priority, allocation);
+              const parsedDayRate = dayRate.trim() === '' ? undefined : Number(dayRate);
+              if (parsedDayRate !== undefined && (!Number.isFinite(parsedDayRate) || parsedDayRate < 0)) {
+                setError('Day rate must be a positive number.');
+                return;
+              }
+              onSubmit(posTitle.trim(), priority, allocation, parsedDayRate);
             }}
           >
             Add
@@ -446,6 +454,17 @@ function OpenPositionFormModal({
             value={allocation}
             onChange={(e) => setAllocation(Number(e.target.value))}
             className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Day Rate (Forecast)</label>
+          <input
+            type="number"
+            min={0}
+            value={dayRate}
+            onChange={(e) => setDayRate(e.target.value)}
+            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            placeholder="1200"
           />
         </div>
       </div>

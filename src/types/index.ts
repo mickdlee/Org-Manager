@@ -74,6 +74,31 @@ export interface OpenPosition {
   title: string;
   priority: HiringPriority;
   allocationPercentage?: number;
+  dayRate?: number;
+}
+
+export type DeliverableStatus = 'Planned' | 'In Progress' | 'At Risk' | 'Complete';
+
+export interface FundedDeliverable {
+  id: string;
+  code: string;
+  name: string;
+  owner: string;
+  status: DeliverableStatus;
+  startDate?: string;
+  endDate?: string;
+  fundingAmount: number;
+}
+
+export type DeliverableAllocationSet = Record<string, number>;
+
+export interface SquadMonthFinancialAllocation {
+  actual: DeliverableAllocationSet;
+  forecast: DeliverableAllocationSet;
+}
+
+export interface FinancialMonthRecord {
+  squadAllocations: Record<string, SquadMonthFinancialAllocation>;
 }
 
 export interface SquadOnboarding {
@@ -139,6 +164,8 @@ export interface DeliveryUnit {
   onboarding?: DeliveryUnitOnboarding;
   okrs?: DeliveryUnitOKR[];
   openPositions?: OpenPosition[];
+  fundedDeliverables?: FundedDeliverable[];
+  financialsByMonth?: Record<string, FinancialMonthRecord>;
 }
 
 export interface SquadTemplateRole {

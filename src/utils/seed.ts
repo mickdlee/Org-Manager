@@ -7,6 +7,7 @@ const SAMPLE_TYPICAL_ROLES = [...DEFAULT_SQUAD_ROLES];
 export function generateSeedData(): AppData {
   const baseYear = new Date().getFullYear();
   const nextThreeYears = [baseYear, baseYear + 1, baseYear + 2];
+  const currentMonth = `${baseYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
   const buildKR = (
     id: string,
@@ -23,6 +24,10 @@ export function generateSeedData(): AppData {
       year,
       target: targets[idx],
     })),
+  });
+
+  const buildMonthRecord = (squadAllocations: Record<string, { actual: Record<string, number>; forecast: Record<string, number> }>) => ({
+    squadAllocations,
   });
 
   // ── People ──────────────────────────────────────────────────────────────────
@@ -144,8 +149,54 @@ export function generateSeedData(): AppData {
       },
     ],
     openPositions: [
-      { id: 'dup01-1', title: 'Platform Lead', priority: 'Medium', allocationPercentage: 100 },
+      { id: 'dup01-1', title: 'Platform Lead', priority: 'Medium', allocationPercentage: 100, dayRate: 1300 },
     ],
+    fundedDeliverables: [
+      {
+        id: 'fd-du01-1',
+        code: 'FD-RET-001',
+        name: 'Payment Resilience Upgrade',
+        owner: 'Sarah Mitchell',
+        status: 'In Progress',
+        startDate: `${baseYear}-01-01`,
+        endDate: `${baseYear}-12-31`,
+        fundingAmount: 420000,
+      },
+      {
+        id: 'fd-du01-2',
+        code: 'FD-RET-002',
+        name: 'Fraud Platform Modernization',
+        owner: 'James Okafor',
+        status: 'Planned',
+        startDate: `${baseYear}-02-01`,
+        endDate: `${baseYear}-11-30`,
+        fundingAmount: 300000,
+      },
+    ],
+    financialsByMonth: {
+      [currentMonth]: buildMonthRecord({
+        sq01: {
+          actual: { 'fd-du01-1': 70, 'fd-du01-2': 30 },
+          forecast: { 'fd-du01-1': 65, 'fd-du01-2': 35 },
+        },
+        sq02: {
+          actual: { 'fd-du01-1': 40, 'fd-du01-2': 60 },
+          forecast: { 'fd-du01-1': 45, 'fd-du01-2': 55 },
+        },
+        sq03: {
+          actual: { 'fd-du01-1': 55, 'fd-du01-2': 45 },
+          forecast: { 'fd-du01-1': 50, 'fd-du01-2': 50 },
+        },
+        sq04: {
+          actual: { 'fd-du01-1': 60, 'fd-du01-2': 40 },
+          forecast: { 'fd-du01-1': 58, 'fd-du01-2': 42 },
+        },
+        sq05: {
+          actual: { 'fd-du01-1': 35, 'fd-du01-2': 65 },
+          forecast: { 'fd-du01-1': 30, 'fd-du01-2': 70 },
+        },
+      }),
+    },
     onboarding: {
       overallHealthStatus: 'Healthy',
       totalNewHires: 1,
@@ -226,7 +277,7 @@ export function generateSeedData(): AppData {
           },
         ],
         openPositions: [
-          { id: 'dup02-rt03-1', title: 'Payment Systems Lead', priority: 'High', allocationPercentage: 100 },
+          { id: 'dup02-rt03-1', title: 'Payment Systems Lead', priority: 'High', allocationPercentage: 100, dayRate: 1250 },
         ],
       },
       {
@@ -267,13 +318,59 @@ export function generateSeedData(): AppData {
           },
         ],
         openPositions: [
-          { id: 'dup02-rt04-1', title: 'Frontend Architect', priority: 'Medium', allocationPercentage: 100 },
+          { id: 'dup02-rt04-1', title: 'Frontend Architect', priority: 'Medium', allocationPercentage: 100, dayRate: 1150 },
         ],
       },
     ],
     openPositions: [
-      { id: 'dup02-1', title: 'Product Strategy Lead', priority: 'Low', allocationPercentage: 100 },
+      { id: 'dup02-1', title: 'Product Strategy Lead', priority: 'Low', allocationPercentage: 100, dayRate: 1200 },
     ],
+    fundedDeliverables: [
+      {
+        id: 'fd-du02-1',
+        code: 'FD-CB-001',
+        name: 'Digital Lending Growth',
+        owner: 'Ingrid Larsson',
+        status: 'In Progress',
+        startDate: `${baseYear}-01-01`,
+        endDate: `${baseYear}-12-31`,
+        fundingAmount: 380000,
+      },
+      {
+        id: 'fd-du02-2',
+        code: 'FD-CB-002',
+        name: 'Onboarding Journey Revamp',
+        owner: 'Rohan Kapoor',
+        status: 'At Risk',
+        startDate: `${baseYear}-03-01`,
+        endDate: `${baseYear}-10-31`,
+        fundingAmount: 260000,
+      },
+    ],
+    financialsByMonth: {
+      [currentMonth]: buildMonthRecord({
+        sq06: {
+          actual: { 'fd-du02-1': 80, 'fd-du02-2': 20 },
+          forecast: { 'fd-du02-1': 75, 'fd-du02-2': 25 },
+        },
+        sq07: {
+          actual: { 'fd-du02-1': 65, 'fd-du02-2': 35 },
+          forecast: { 'fd-du02-1': 62, 'fd-du02-2': 38 },
+        },
+        sq08: {
+          actual: { 'fd-du02-1': 30, 'fd-du02-2': 70 },
+          forecast: { 'fd-du02-1': 28, 'fd-du02-2': 72 },
+        },
+        sq09: {
+          actual: { 'fd-du02-1': 35, 'fd-du02-2': 65 },
+          forecast: { 'fd-du02-1': 40, 'fd-du02-2': 60 },
+        },
+        sq10: {
+          actual: { 'fd-du02-1': 20, 'fd-du02-2': 80 },
+          forecast: { 'fd-du02-1': 22, 'fd-du02-2': 78 },
+        },
+      }),
+    },
     onboarding: {
       overallHealthStatus: 'Attention',
       totalNewHires: 0,

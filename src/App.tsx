@@ -5,6 +5,7 @@ import { AppStoreProvider } from './store/useAppStore';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DeliveryUnitPage } from './pages/DeliveryUnitPage';
+import { DeliveryUnitFinancialsPage } from './pages/DeliveryUnitFinancialsPage';
 import { DeliveryUnitOnboardingPage } from './pages/DeliveryUnitOnboardingPage';
 import { ReleaseTrainPage } from './pages/ReleaseTrainPage';
 import { SquadPage } from './pages/SquadPage';
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/delivery-units/:id" element={<DeliveryUnitPage />} />
+            <Route path="/delivery-units/:duId/financials" element={<DeliveryUnitFinancialsPage />} />
             <Route
               path="/delivery-units/:duId/onboarding"
               element={

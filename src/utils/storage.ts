@@ -21,6 +21,11 @@ function normalizeSalaryId(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function normalizeDayRate(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return undefined;
+  return value;
+}
+
 async function getRemoteAppData(): Promise<AppData | null> {
   try {
     const res = await fetch(APP_DATA_ENDPOINT);
@@ -176,14 +181,55 @@ export function loadData(): AppData {
         }),
       })),
       assignments: withAssignmentFlags(du.assignments),
-      openPositions: du.openPositions ?? [],
+      openPositions: (du.openPositions ?? []).map((pos) => ({
+        ...pos,
+        dayRate: normalizeDayRate(pos.dayRate),
+      })),
+      fundedDeliverables: (du.fundedDeliverables ?? []).map((deliverable) => ({
+        ...deliverable,
+        code: deliverable.code ?? '',
+        owner: deliverable.owner ?? '',
+        status: deliverable.status ?? 'Planned',
+        startDate: deliverable.startDate ?? undefined,
+        endDate: deliverable.endDate ?? undefined,
+        fundingAmount:
+          typeof deliverable.fundingAmount === 'number' && Number.isFinite(deliverable.fundingAmount)
+            ? Math.max(0, deliverable.fundingAmount)
+            : 0,
+      })),
+      financialsByMonth: Object.fromEntries(
+        Object.entries(du.financialsByMonth ?? {}).map(([month, monthRecord]) => {
+          const normalizedSquadAllocations = Object.fromEntries(
+            Object.entries(monthRecord?.squadAllocations ?? {}).map(([sqId, allocation]) => [
+              sqId,
+              {
+                actual: allocation?.actual ?? {},
+                forecast: allocation?.forecast ?? {},
+              },
+            ]),
+          );
+          return [month, { squadAllocations: normalizedSquadAllocations }];
+        }),
+      ),
       releaseTrains: du.releaseTrains.map((rt) => ({
         ...rt,
         assignments: withAssignmentFlags(rt.assignments),
-        openPositions: rt.openPositions ?? [],
+        openPositions: (rt.openPositions ?? []).map((pos) => ({
+          ...pos,
+          dayRate: normalizeDayRate(pos.dayRate),
+        })),
         squads: rt.squads.map((sq) => ({
           ...sq,
           assignments: withAssignmentFlags(sq.assignments),
+          onboarding: sq.onboarding
+            ? {
+                ...sq.onboarding,
+                openPositions: (sq.onboarding.openPositions ?? []).map((pos) => ({
+                  ...pos,
+                  dayRate: normalizeDayRate(pos.dayRate),
+                })),
+              }
+            : sq.onboarding,
         })),
       })),
     }));

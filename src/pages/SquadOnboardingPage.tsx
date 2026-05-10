@@ -273,7 +273,10 @@ export function SquadOnboardingPage() {
                     <ChevronRight size={11} className="text-gray-300 mt-1 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-700 leading-tight">{pos.title}</p>
-                      <Badge color={PRIORITY_COLORS[pos.priority]}>{pos.priority}</Badge>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge color={PRIORITY_COLORS[pos.priority]}>{pos.priority}</Badge>
+                        <span className="text-[11px] text-gray-500">Day Rate: {pos.dayRate ? `$${pos.dayRate}` : '—'}</span>
+                      </div>
                     </div>
                     {canEditSquad && (
                       <button
@@ -672,12 +675,18 @@ function AddPositionButton({ onAdd }: { onAdd: (p: OpenPosition) => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<HiringPriority>('Medium');
+  const [dayRate, setDayRate] = useState('');
   const [err, setErr] = useState('');
 
   const submit = () => {
     if (!title.trim()) { setErr('Title is required.'); return; }
-    onAdd({ id: uid(), title: title.trim(), priority });
-    setTitle(''); setPriority('Medium'); setErr(''); setOpen(false);
+    const parsedDayRate = dayRate.trim() === '' ? undefined : Number(dayRate);
+    if (parsedDayRate !== undefined && (!Number.isFinite(parsedDayRate) || parsedDayRate < 0)) {
+      setErr('Day rate must be a positive number.');
+      return;
+    }
+    onAdd({ id: uid(), title: title.trim(), priority, dayRate: parsedDayRate });
+    setTitle(''); setPriority('Medium'); setDayRate(''); setErr(''); setOpen(false);
   };
 
   return (
@@ -714,6 +723,17 @@ function AddPositionButton({ onAdd }: { onAdd: (p: OpenPosition) => void }) {
                 <option>Medium</option>
                 <option>Low</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Day Rate (Forecast)</label>
+              <input
+                type="number"
+                min={0}
+                value={dayRate}
+                onChange={(e) => setDayRate(e.target.value)}
+                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                placeholder="1200"
+              />
             </div>
             {err && <p className="text-xs text-red-500">{err}</p>}
             <div className="flex gap-2 pt-1">

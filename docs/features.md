@@ -82,6 +82,36 @@ Cost is calculated from each person's **day rate** and **allocation percentage**
 - Costs roll up: Squad → Release Train → Delivery Unit → Dashboard totals.
 - Allocation is set **per squad assignment only** — DU and RT assignments are excluded from allocation totals by design.
 
+## Financials (Monthly Funded Deliverables)
+
+Delivery Units now support a dedicated **Financials** tab for monthly funded-deliverable planning and tracking.
+
+- **Funded deliverables (DU level)** — each DU can define deliverables with:
+  - Code
+  - Name
+  - Owner
+  - Status (`Planned`, `In Progress`, `At Risk`, `Complete`)
+  - Start date / End date
+  - Funding amount (monthly budget target)
+- **Month picker** — financial allocations and rollups are stored per month (`YYYY-MM`), preserving history.
+- **Squad allocation input** — for each squad and month, admins enter:
+  - Actual allocation percentages across funded deliverables
+  - Forecast allocation percentages across funded deliverables
+  - Both Actual and Forecast totals must each equal **100%** per squad.
+- **Actuals calculation**:
+  - Squad assignment costs are split across deliverables by the squad's Actual percentages.
+  - DU and RT assignment costs are auto-distributed using the DU's aggregated squad Actual mix for the selected month.
+- **Forecast calculation**:
+  - Uses squad Forecast percentages.
+  - Includes forecast costs from open positions with configured day rates (DU, RT, and Squad onboarding open positions).
+  - DU and RT assignment/open-position forecast costs are auto-distributed by aggregated squad Forecast mix.
+- **Rollup outputs** (per deliverable and total):
+  - Actual monthly cost
+  - Forecast monthly cost
+  - Variance against funded amount (Actual and Forecast)
+
+Open positions now support optional **Day Rate** input for forecast modeling.
+
 ---
 
 ## Allocation Management
