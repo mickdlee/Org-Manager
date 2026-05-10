@@ -43,6 +43,41 @@ export interface DeliveryUnitFinancialSummary {
   };
 }
 
+export interface DeliverableFinancialYearProjection {
+  deliverableId: string;
+  code: string;
+  name: string;
+  initialFunding: number;
+  actualSpendToDate: number;
+  remainingNow: number;
+  futureForecastSpend: number;
+  projectedEndOfYearRemaining: number;
+  runOutMonthKey: string | null;
+}
+
+export interface FutureMonthTally {
+  monthKey: string;
+  label: string;
+  forecastSpend: number;
+  cumulativeForecastSpend: number;
+  projectedRemainingAfterMonth: number;
+}
+
+export interface DeliveryUnitFinancialYearProjection {
+  fyMonths: FinancialYearMonth[];
+  currentMonthKey: string;
+  byDeliverable: DeliverableFinancialYearProjection[];
+  totals: {
+    initialFunding: number;
+    actualSpendToDate: number;
+    remainingNow: number;
+    futureForecastSpend: number;
+    projectedEndOfYearRemaining: number;
+    runOutMonthKey: string | null;
+  };
+  futureMonthTallies: FutureMonthTally[];
+}
+
 function sumAllocationPercent(allocation: DeliverableAllocationSet): number {
   return Object.values(allocation).reduce((sum, value) => sum + value, 0);
 }
@@ -63,6 +98,10 @@ function sanitizeAllocation(
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function isValidAllocationTotal(totalPercent: number): boolean {
+  return Math.abs(totalPercent - 100) < 0.0001 || Math.abs(totalPercent) < 0.0001;
 }
 
 function buildSquadMix(
@@ -120,7 +159,7 @@ export function calculateDeliveryUnitFinancials(
       squadId: row.squad.id,
       squadName: row.squad.name,
       totalPercent,
-      isValid: Math.abs(totalPercent - 100) < 0.0001,
+      isValid: isValidAllocationTotal(totalPercent),
     };
   });
 
@@ -130,7 +169,7 @@ export function calculateDeliveryUnitFinancials(
       squadId: row.squad.id,
       squadName: row.squad.name,
       totalPercent,
-      isValid: Math.abs(totalPercent - 100) < 0.0001,
+      isValid: isValidAllocationTotal(totalPercent),
     };
   });
 
@@ -234,6 +273,27 @@ export function formatMonthKey(date: Date): string {
   return `${year}-${month}`;
 }
 
+export interface FinancialYearMonth {
+  key: string;
+  label: string;
+}
+
+export function getFinancialYearMonths(anchorDate: Date): FinancialYearMonth[] {
+  const anchorYear = anchorDate.getFullYear();
+  const anchorMonth = anchorDate.getMonth();
+  const fyStartYear = anchorMonth >= 9 ? anchorYear : anchorYear - 1;
+  const labels = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+
+  return labels.map((label, idx) => {
+    const year = idx < 3 ? fyStartYear : fyStartYear + 1;
+    const monthNumber = idx < 3 ? idx + 10 : idx - 2;
+    return {
+      key: `${year}-${String(monthNumber).padStart(2, '0')}`,
+      label,
+    };
+  });
+}
+
 export function buildDefaultAllocationSet(deliverables: FundedDeliverable[]): DeliverableAllocationSet {
   if (deliverables.length === 0) return {};
   const equal = 100 / deliverables.length;
@@ -247,4 +307,122 @@ export function buildDefaultAllocationSet(deliverables: FundedDeliverable[]): De
   });
 
   return allocation;
+}
+
+function monthLabelFromKey(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return monthKey;
+  }
+
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+}
+
+export function calculateDeliveryUnitFinancialYearProjection(
+  data: AppData,
+  du: DeliveryUnit,
+  anchorDate: Date,
+): DeliveryUnitFinancialYearProjection {
+  const fyMonths = getFinancialYearMonths(anchorDate);
+  const currentMonthKey = formatMonthKey(anchorDate);
+  const currentMonthIndex = Math.max(
+    0,
+    fyMonths.findIndex((month) => month.key === currentMonthKey),
+  );
+
+  const monthSummaries = fyMonths.map((month) => ({
+    month,
+    summary: calculateDeliveryUnitFinancials(data, du, month.key),
+  }));
+
+  const byDeliverable = (du.fundedDeliverables ?? []).map((deliverable) => {
+    let actualSpendToDate = 0;
+    let futureForecastSpend = 0;
+    let cumulativeSpend = 0;
+    let runOutMonthKey: string | null = null;
+
+    for (let idx = 0; idx < monthSummaries.length; idx += 1) {
+      const row = monthSummaries[idx].summary.byDeliverable.find((item) => item.deliverableId === deliverable.id);
+      const actualMonthly = row?.actualMonthly ?? 0;
+      const forecastMonthly = row?.forecastMonthly ?? 0;
+
+      const monthSpend = idx <= currentMonthIndex ? actualMonthly : forecastMonthly;
+      if (idx <= currentMonthIndex) {
+        actualSpendToDate += actualMonthly;
+      } else {
+        futureForecastSpend += forecastMonthly;
+      }
+
+      cumulativeSpend += monthSpend;
+      if (!runOutMonthKey && cumulativeSpend > deliverable.fundingAmount + 0.0001) {
+        runOutMonthKey = monthSummaries[idx].month.key;
+      }
+    }
+
+    const remainingNow = deliverable.fundingAmount - actualSpendToDate;
+    const projectedEndOfYearRemaining = remainingNow - futureForecastSpend;
+
+    return {
+      deliverableId: deliverable.id,
+      code: deliverable.code,
+      name: deliverable.name,
+      initialFunding: round2(deliverable.fundingAmount),
+      actualSpendToDate: round2(actualSpendToDate),
+      remainingNow: round2(remainingNow),
+      futureForecastSpend: round2(futureForecastSpend),
+      projectedEndOfYearRemaining: round2(projectedEndOfYearRemaining),
+      runOutMonthKey,
+    };
+  });
+
+  const totalInitialFunding = round2(byDeliverable.reduce((sum, row) => sum + row.initialFunding, 0));
+  const totalActualSpendToDate = round2(byDeliverable.reduce((sum, row) => sum + row.actualSpendToDate, 0));
+  const totalFutureForecastSpend = round2(byDeliverable.reduce((sum, row) => sum + row.futureForecastSpend, 0));
+  const totalRemainingNow = round2(totalInitialFunding - totalActualSpendToDate);
+  const totalProjectedEndOfYearRemaining = round2(totalRemainingNow - totalFutureForecastSpend);
+
+  let cumulativeTotalSpend = 0;
+  let totalRunOutMonthKey: string | null = null;
+  for (let idx = 0; idx < monthSummaries.length; idx += 1) {
+    const monthSpend = idx <= currentMonthIndex
+      ? monthSummaries[idx].summary.totals.actualMonthly
+      : monthSummaries[idx].summary.totals.forecastMonthly;
+    cumulativeTotalSpend += monthSpend;
+    if (!totalRunOutMonthKey && cumulativeTotalSpend > totalInitialFunding + 0.0001) {
+      totalRunOutMonthKey = monthSummaries[idx].month.key;
+    }
+  }
+
+  let cumulativeForecastSpend = 0;
+  const futureMonthTallies: FutureMonthTally[] = [];
+  for (let idx = currentMonthIndex + 1; idx < monthSummaries.length; idx += 1) {
+    const monthKey = monthSummaries[idx].month.key;
+    const forecastSpend = round2(monthSummaries[idx].summary.totals.forecastMonthly);
+    cumulativeForecastSpend = round2(cumulativeForecastSpend + forecastSpend);
+    futureMonthTallies.push({
+      monthKey,
+      label: monthLabelFromKey(monthKey),
+      forecastSpend,
+      cumulativeForecastSpend,
+      projectedRemainingAfterMonth: round2(totalRemainingNow - cumulativeForecastSpend),
+    });
+  }
+
+  return {
+    fyMonths,
+    currentMonthKey,
+    byDeliverable,
+    totals: {
+      initialFunding: totalInitialFunding,
+      actualSpendToDate: totalActualSpendToDate,
+      remainingNow: totalRemainingNow,
+      futureForecastSpend: totalFutureForecastSpend,
+      projectedEndOfYearRemaining: totalProjectedEndOfYearRemaining,
+      runOutMonthKey: totalRunOutMonthKey,
+    },
+    futureMonthTallies,
+  };
 }

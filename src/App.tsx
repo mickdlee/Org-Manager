@@ -9,6 +9,7 @@ import { DeliveryUnitFinancialsPage } from './pages/DeliveryUnitFinancialsPage';
 import { DeliveryUnitOnboardingPage } from './pages/DeliveryUnitOnboardingPage';
 import { ReleaseTrainPage } from './pages/ReleaseTrainPage';
 import { SquadPage } from './pages/SquadPage';
+import { SquadFinancialsPage } from './pages/SquadFinancialsPage';
 import { SquadEditorPage } from './pages/SquadEditorPage';
 import { SquadOnboardingPage } from './pages/SquadOnboardingPage';
 import { PeoplePage } from './pages/PeoplePage';
@@ -61,6 +62,7 @@ export default function App() {
             />
             <Route path="/release-trains/:duId/:rtId" element={<ReleaseTrainPage />} />
             <Route path="/squads/:duId/:rtId/:sqId" element={<SquadPage />} />
+            <Route path="/squads/:duId/:rtId/:sqId/financials" element={<SquadFinancialsPage />} />
             <Route
               path="/squads/:duId/:rtId/:sqId/editor"
               element={

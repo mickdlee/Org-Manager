@@ -10,13 +10,10 @@ import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
 import { canManageDeliveryUnit } from '../utils/permissions';
 import {
-  buildDefaultAllocationSet,
-  calculateDeliveryUnitFinancials,
-  formatMonthKey,
-  type FinancialAllocationKind,
+  calculateDeliveryUnitFinancialYearProjection,
 } from '../utils/financials';
 import { formatCost } from '../utils/cost';
-import type { DeliverableAllocationSet, DeliverableStatus, FundedDeliverable } from '../types';
+import type { DeliverableStatus, FundedDeliverable } from '../types';
 
 const STATUS_OPTIONS: DeliverableStatus[] = ['Planned', 'In Progress', 'At Risk', 'Complete'];
 
@@ -27,7 +24,6 @@ export function DeliveryUnitFinancialsPage() {
     addFundedDeliverable,
     updateFundedDeliverable,
     deleteFundedDeliverable,
-    setSquadFinancialAllocation,
   } = useAppStore();
   const { session } = useAuth();
 
@@ -36,9 +32,7 @@ export function DeliveryUnitFinancialsPage() {
 
   const canEditDU = canManageDeliveryUnit(data, session, du.id);
   const fundedDeliverables = du.fundedDeliverables ?? [];
-  const allSquads = du.releaseTrains.flatMap((rt) => rt.squads);
 
-  const [month, setMonth] = useState(formatMonthKey(new Date()));
   const [showCreateDeliverable, setShowCreateDeliverable] = useState(false);
   const [editDeliverableId, setEditDeliverableId] = useState<string | null>(null);
   const [deleteDeliverableId, setDeleteDeliverableId] = useState<string | null>(null);
@@ -46,32 +40,10 @@ export function DeliveryUnitFinancialsPage() {
   const editDeliverable = fundedDeliverables.find((item) => item.id === editDeliverableId);
   const deleteDeliverableTarget = fundedDeliverables.find((item) => item.id === deleteDeliverableId);
 
-  const summary = useMemo(() => calculateDeliveryUnitFinancials(data, du, month), [data, du, month]);
-
-  const updateAllocationCell = (
-    squadId: string,
-    kind: FinancialAllocationKind,
-    deliverableId: string,
-    value: string,
-  ) => {
-    if (!canEditDU) return;
-
-    const numericValue = value.trim() === '' ? 0 : Number(value);
-    if (!Number.isFinite(numericValue) || numericValue < 0) return;
-
-    const current = du.financialsByMonth?.[month]?.squadAllocations?.[squadId]?.[kind] ?? {};
-    const next: DeliverableAllocationSet = {
-      ...current,
-      [deliverableId]: numericValue,
-    };
-    setSquadFinancialAllocation(du.id, month, squadId, kind, next);
-  };
-
-  const applyEqualSplit = (squadId: string, kind: FinancialAllocationKind) => {
-    if (!canEditDU) return;
-    const split = buildDefaultAllocationSet(fundedDeliverables);
-    setSquadFinancialAllocation(du.id, month, squadId, kind, split);
-  };
+  const fyProjection = useMemo(
+    () => calculateDeliveryUnitFinancialYearProjection(data, du, new Date()),
+    [data, du],
+  );
 
   return (
     <Layout
@@ -104,15 +76,31 @@ export function DeliveryUnitFinancialsPage() {
 
       <Card className="mb-6">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <h2 className="font-semibold text-gray-700">Reporting Month</h2>
-          <div className="w-52">
-            <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+          <h2 className="font-semibold text-gray-700">Current FY Funding Position</h2>
+          <span className="text-xs text-gray-500">Current month: {formatMonthLabel(fyProjection.currentMonthKey)}</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-xs">
+          <div className="border border-gray-200 rounded p-3">
+            <p className="text-gray-500 uppercase tracking-wide">Initial Funding</p>
+            <p className="text-base font-semibold text-gray-800">{formatCost(fyProjection.totals.initialFunding)}</p>
+          </div>
+          <div className="border border-gray-200 rounded p-3">
+            <p className="text-gray-500 uppercase tracking-wide">Spent To Date</p>
+            <p className="text-base font-semibold text-gray-800">{formatCost(fyProjection.totals.actualSpendToDate)}</p>
+          </div>
+          <div className="border border-gray-200 rounded p-3">
+            <p className="text-gray-500 uppercase tracking-wide">Remaining Now</p>
+            <p className={`text-base font-semibold ${fyProjection.totals.remainingNow >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+              {formatCost(fyProjection.totals.remainingNow)}
+            </p>
+          </div>
+          <div className="border border-gray-200 rounded p-3">
+            <p className="text-gray-500 uppercase tracking-wide">Run Out Date</p>
+            <p className={`text-base font-semibold ${fyProjection.totals.runOutMonthKey ? 'text-red-600' : 'text-emerald-700'}`}>
+              {fyProjection.totals.runOutMonthKey ? formatMonthLabel(fyProjection.totals.runOutMonthKey) : 'Within FY Budget'}
+            </p>
           </div>
         </div>
-        <p className="text-xs text-gray-500">
-          Squad-level allocations must sum to 100% for both Actual and Forecast each month.
-          DU and RT assignment costs are auto-distributed by aggregated squad allocation mix.
-        </p>
       </Card>
 
       <Card className="mb-6">
@@ -180,109 +168,13 @@ export function DeliveryUnitFinancialsPage() {
         )}
       </Card>
 
-      <Card className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-gray-700">Squad Allocation Matrix ({month})</h2>
-          <span className="text-xs text-gray-400">Actual and Forecast must each total 100%</span>
-        </div>
-
-        {fundedDeliverables.length === 0 || allSquads.length === 0 ? (
-          <p className="text-sm text-gray-500">Add funded deliverables and squads to enter monthly allocations.</p>
-        ) : (
-          <div className="space-y-5">
-            {allSquads.map((sq) => {
-              const actual = du.financialsByMonth?.[month]?.squadAllocations?.[sq.id]?.actual ?? {};
-              const forecast = du.financialsByMonth?.[month]?.squadAllocations?.[sq.id]?.forecast ?? {};
-              const actualValidation = summary.actualValidation.find((item) => item.squadId === sq.id);
-              const forecastValidation = summary.forecastValidation.find((item) => item.squadId === sq.id);
-
-              return (
-                <div key={sq.id} className="border border-gray-200 rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-gray-700">{sq.name}</h3>
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="text-xs text-blue-600 hover:underline"
-                        onClick={() => applyEqualSplit(sq.id, 'actual')}
-                        disabled={!canEditDU}
-                      >
-                        Equal Split Actual
-                      </button>
-                      <button
-                        className="text-xs text-blue-600 hover:underline"
-                        onClick={() => applyEqualSplit(sq.id, 'forecast')}
-                        disabled={!canEditDU}
-                      >
-                        Equal Split Forecast
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto border border-gray-200 rounded">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase tracking-wider">
-                          <th className="px-3 py-2 text-left">Deliverable</th>
-                          <th className="px-3 py-2 text-left">Actual %</th>
-                          <th className="px-3 py-2 text-left">Forecast %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {fundedDeliverables.map((deliverable) => (
-                          <tr key={`${sq.id}-${deliverable.id}`} className="border-b border-gray-100 last:border-0">
-                            <td className="px-3 py-2 text-gray-700">{deliverable.name}</td>
-                            <td className="px-3 py-2 text-gray-700">
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                step={1}
-                                disabled={!canEditDU}
-                                value={actual[deliverable.id] ?? 0}
-                                onChange={(e) => updateAllocationCell(sq.id, 'actual', deliverable.id, e.target.value)}
-                                className="w-24 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-gray-700">
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                step={1}
-                                disabled={!canEditDU}
-                                value={forecast[deliverable.id] ?? 0}
-                                onChange={(e) => updateAllocationCell(sq.id, 'forecast', deliverable.id, e.target.value)}
-                                className="w-24 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="mt-2 flex items-center gap-6 text-xs">
-                    <span className={actualValidation?.isValid ? 'text-emerald-700' : 'text-red-600'}>
-                      Actual Total: {actualValidation?.totalPercent ?? 0}%
-                    </span>
-                    <span className={forecastValidation?.isValid ? 'text-emerald-700' : 'text-red-600'}>
-                      Forecast Total: {forecastValidation?.totalPercent ?? 0}%
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
       <Card>
         <div className="flex items-center gap-2 mb-3">
           <Calculator size={16} className="text-gray-500" />
-          <h2 className="font-semibold text-gray-700">Actuals and Forecast Rollup ({month})</h2>
+          <h2 className="font-semibold text-gray-700">FY Burn Projection By Deliverable</h2>
         </div>
 
-        {summary.byDeliverable.length === 0 ? (
+        {fyProjection.byDeliverable.length === 0 ? (
           <p className="text-sm text-gray-500">No deliverables to calculate.</p>
         ) : (
           <div className="overflow-x-auto border border-gray-200 rounded">
@@ -290,43 +182,82 @@ export function DeliveryUnitFinancialsPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase tracking-wider">
                   <th className="px-3 py-2 text-left">Deliverable</th>
-                  <th className="px-3 py-2 text-left">Funding</th>
-                  <th className="px-3 py-2 text-left">Actual /month</th>
-                  <th className="px-3 py-2 text-left">Forecast /month</th>
-                  <th className="px-3 py-2 text-left">Actual Variance</th>
-                  <th className="px-3 py-2 text-left">Forecast Variance</th>
+                  <th className="px-3 py-2 text-left">Initial Funding (FY Start)</th>
+                  <th className="px-3 py-2 text-left">Actual Spent To Date</th>
+                  <th className="px-3 py-2 text-left">Remaining Now</th>
+                  <th className="px-3 py-2 text-left">Future Forecast (Rest of FY)</th>
+                  <th className="px-3 py-2 text-left">Projected End FY Remaining</th>
+                  <th className="px-3 py-2 text-left">Run Out Date</th>
                 </tr>
               </thead>
               <tbody>
-                {summary.byDeliverable.map((row) => (
+                {fyProjection.byDeliverable.map((row) => (
                   <tr key={row.deliverableId} className="border-b border-gray-100 last:border-0">
                     <td className="px-3 py-2 text-gray-700">
                       <span className="font-medium">{row.name}</span>
                       <span className="text-gray-400 ml-1">{row.code ? `(${row.code})` : ''}</span>
                     </td>
-                    <td className="px-3 py-2 text-gray-700">{formatCost(row.fundingAmount)}</td>
-                    <td className="px-3 py-2 text-gray-700">{formatCost(row.actualMonthly)}</td>
-                    <td className="px-3 py-2 text-gray-700">{formatCost(row.forecastMonthly)}</td>
-                    <td className={`px-3 py-2 ${row.varianceActualMonthly >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                      {formatCost(row.varianceActualMonthly)}
+                    <td className="px-3 py-2 text-gray-700">{formatCost(row.initialFunding)}</td>
+                    <td className="px-3 py-2 text-gray-700">{formatCost(row.actualSpendToDate)}</td>
+                    <td className={`px-3 py-2 ${row.remainingNow >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {formatCost(row.remainingNow)}
                     </td>
-                    <td className={`px-3 py-2 ${row.varianceForecastMonthly >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                      {formatCost(row.varianceForecastMonthly)}
+                    <td className="px-3 py-2 text-gray-700">{formatCost(row.futureForecastSpend)}</td>
+                    <td className={`px-3 py-2 ${row.projectedEndOfYearRemaining >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {formatCost(row.projectedEndOfYearRemaining)}
+                    </td>
+                    <td className={`px-3 py-2 ${row.runOutMonthKey ? 'text-red-600' : 'text-emerald-700'}`}>
+                      {row.runOutMonthKey ? formatMonthLabel(row.runOutMonthKey) : 'Within FY Budget'}
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-gray-50 font-semibold text-gray-700">
                   <td className="px-3 py-2">Total</td>
-                  <td className="px-3 py-2">{formatCost(summary.totals.funded)}</td>
-                  <td className="px-3 py-2">{formatCost(summary.totals.actualMonthly)}</td>
-                  <td className="px-3 py-2">{formatCost(summary.totals.forecastMonthly)}</td>
-                  <td className={`px-3 py-2 ${summary.totals.funded - summary.totals.actualMonthly >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {formatCost(summary.totals.funded - summary.totals.actualMonthly)}
+                  <td className="px-3 py-2">{formatCost(fyProjection.totals.initialFunding)}</td>
+                  <td className="px-3 py-2">{formatCost(fyProjection.totals.actualSpendToDate)}</td>
+                  <td className={`px-3 py-2 ${fyProjection.totals.remainingNow >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {formatCost(fyProjection.totals.remainingNow)}
                   </td>
-                  <td className={`px-3 py-2 ${summary.totals.funded - summary.totals.forecastMonthly >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {formatCost(summary.totals.funded - summary.totals.forecastMonthly)}
+                  <td className="px-3 py-2">{formatCost(fyProjection.totals.futureForecastSpend)}</td>
+                  <td className={`px-3 py-2 ${fyProjection.totals.projectedEndOfYearRemaining >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {formatCost(fyProjection.totals.projectedEndOfYearRemaining)}
+                  </td>
+                  <td className={`px-3 py-2 ${fyProjection.totals.runOutMonthKey ? 'text-red-600' : 'text-emerald-700'}`}>
+                    {fyProjection.totals.runOutMonthKey ? formatMonthLabel(fyProjection.totals.runOutMonthKey) : 'Within FY Budget'}
                   </td>
                 </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="font-semibold text-gray-700 mb-3">Future Month Forecast Tallies</h2>
+        {fyProjection.futureMonthTallies.length === 0 ? (
+          <p className="text-sm text-gray-500">No future months remain in the current financial year.</p>
+        ) : (
+          <div className="overflow-x-auto border border-gray-200 rounded">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left">Month</th>
+                  <th className="px-3 py-2 text-left">Forecast Spend</th>
+                  <th className="px-3 py-2 text-left">Cumulative Future Forecast</th>
+                  <th className="px-3 py-2 text-left">Projected Remaining After Month</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fyProjection.futureMonthTallies.map((row) => (
+                  <tr key={row.monthKey} className="border-b border-gray-100 last:border-0">
+                    <td className="px-3 py-2 text-gray-700">{row.label}</td>
+                    <td className="px-3 py-2 text-gray-700">{formatCost(row.forecastSpend)}</td>
+                    <td className="px-3 py-2 text-gray-700">{formatCost(row.cumulativeForecastSpend)}</td>
+                    <td className={`px-3 py-2 ${row.projectedRemainingAfterMonth >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {formatCost(row.projectedRemainingAfterMonth)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -369,6 +300,15 @@ export function DeliveryUnitFinancialsPage() {
       )}
     </Layout>
   );
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return monthKey;
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function FundedDeliverableModal({

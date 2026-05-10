@@ -173,15 +173,18 @@
         "assignments": [
           {
             "personId": "p01",
-            "role": "Delivery Unit Owner"
+            "role": "Delivery Unit Owner",
+            "isScheduledOffboarding": false
           },
           {
             "personId": "p02",
-            "role": "Chief Product Owner"
+            "role": "Chief Product Owner",
+            "isScheduledOffboarding": false
           },
           {
             "personId": "p03",
-            "role": "Delivery Lead"
+            "role": "Delivery Lead",
+            "isScheduledOffboarding": false
           }
         ],
         "releaseTrains": [
@@ -192,11 +195,13 @@
             "assignments": [
               {
                 "personId": "p04",
-                "role": "Release Train Engineer"
+                "role": "Release Train Engineer",
+                "isScheduledOffboarding": false
               },
               {
                 "personId": "p05",
-                "role": "Product Owner"
+                "role": "Product Owner",
+                "isScheduledOffboarding": false
               }
             ],
             "squads": [
@@ -207,11 +212,13 @@
                 "assignments": [
                   {
                     "personId": "p06",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p07",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ],
                 "onboarding": {
@@ -241,11 +248,13 @@
                 "assignments": [
                   {
                     "personId": "p08",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p09",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               },
@@ -256,11 +265,13 @@
                 "assignments": [
                   {
                     "personId": "p10",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               }
-            ]
+            ],
+            "openPositions": []
           },
           {
             "id": "rt02",
@@ -269,11 +280,13 @@
             "assignments": [
               {
                 "personId": "p11",
-                "role": "Release Train Engineer"
+                "role": "Release Train Engineer",
+                "isScheduledOffboarding": false
               },
               {
                 "personId": "p12",
-                "role": "Product Owner"
+                "role": "Product Owner",
+                "isScheduledOffboarding": false
               }
             ],
             "squads": [
@@ -284,11 +297,13 @@
                 "assignments": [
                   {
                     "personId": "p13",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p14",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               },
@@ -299,7 +314,8 @@
                 "assignments": [
                   {
                     "personId": "p15",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               }
@@ -332,7 +348,7 @@
             "status": "In Progress",
             "startDate": "2026-01-01",
             "endDate": "2026-12-31",
-            "fundingAmount": 420000
+            "fundingAmount": 4200000
           },
           {
             "id": "fd-du01-2",
@@ -342,7 +358,7 @@
             "status": "Planned",
             "startDate": "2026-02-01",
             "endDate": "2026-11-30",
-            "fundingAmount": 300000
+            "fundingAmount": 3000000
           }
         ],
         "financialsByMonth": {
@@ -350,8 +366,8 @@
             "squadAllocations": {
               "sq01": {
                 "actual": {
-                  "fd-du01-1": 70,
-                  "fd-du01-2": 30
+                  "fd-du01-1": 60,
+                  "fd-du01-2": 40
                 },
                 "forecast": {
                   "fd-du01-1": 65,
@@ -397,6 +413,127 @@
                   "fd-du01-1": 30,
                   "fd-du01-2": 70
                 }
+              }
+            }
+          },
+          "2025-10": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2025-11": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2025-12": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-01": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-02": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-03": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-04": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 50,
+                  "fd-du01-2": 50
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-06": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 60,
+                  "fd-du01-2": 40
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-07": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 60,
+                  "fd-du01-2": 40
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-08": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 60,
+                  "fd-du01-2": 40
+                },
+                "forecast": {}
+              }
+            }
+          },
+          "2026-09": {
+            "squadAllocations": {
+              "sq01": {
+                "actual": {
+                  "fd-du01-1": 60,
+                  "fd-du01-2": 40
+                },
+                "forecast": {}
               }
             }
           }
@@ -534,15 +671,18 @@
         "assignments": [
           {
             "personId": "p16",
-            "role": "Delivery Unit Owner"
+            "role": "Delivery Unit Owner",
+            "isScheduledOffboarding": false
           },
           {
             "personId": "p17",
-            "role": "Chief Product Owner"
+            "role": "Chief Product Owner",
+            "isScheduledOffboarding": false
           },
           {
             "personId": "p18",
-            "role": "Delivery Lead"
+            "role": "Delivery Lead",
+            "isScheduledOffboarding": false
           }
         ],
         "releaseTrains": [
@@ -553,11 +693,13 @@
             "assignments": [
               {
                 "personId": "p06",
-                "role": "Release Train Engineer"
+                "role": "Release Train Engineer",
+                "isScheduledOffboarding": false
               },
               {
                 "personId": "p08",
-                "role": "Product Owner"
+                "role": "Product Owner",
+                "isScheduledOffboarding": false
               }
             ],
             "squads": [
@@ -568,15 +710,18 @@
                 "assignments": [
                   {
                     "personId": "p09",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p10",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p11",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ],
                 "onboarding": {
@@ -594,11 +739,13 @@
                 "assignments": [
                   {
                     "personId": "p12",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p13",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               }
@@ -620,11 +767,13 @@
             "assignments": [
               {
                 "personId": "p14",
-                "role": "Release Train Engineer"
+                "role": "Release Train Engineer",
+                "isScheduledOffboarding": false
               },
               {
                 "personId": "p15",
-                "role": "Product Owner"
+                "role": "Product Owner",
+                "isScheduledOffboarding": false
               }
             ],
             "squads": [
@@ -635,11 +784,13 @@
                 "assignments": [
                   {
                     "personId": "p04",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p05",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               },
@@ -650,11 +801,13 @@
                 "assignments": [
                   {
                     "personId": "p07",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p16",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               },
@@ -665,11 +818,13 @@
                 "assignments": [
                   {
                     "personId": "p17",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   },
                   {
                     "personId": "p18",
-                    "role": "Squad Member"
+                    "role": "Squad Member",
+                    "isScheduledOffboarding": false
                   }
                 ]
               }

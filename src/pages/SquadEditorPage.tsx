@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../hooks/useAuth';
-import { personTotalAllocationPercent } from '../utils/cost';
+import { assignmentDailyCost, formatCost, personTotalAllocationPercent, squadDailyCost, WORKING_DAYS_PER_MONTH } from '../utils/cost';
 import type { OpenPosition } from '../types';
 import { avatarColor, initialsFromName } from '../utils/avatar';
 import { canManageSquad } from '../utils/permissions';
@@ -38,6 +38,11 @@ export function SquadEditorPage() {
 
   const searchText = search.trim().toLowerCase();
 
+  const personById = useMemo(() => {
+    const map = new Map(data.people.map((person) => [person.id, person]));
+    return map;
+  }, [data.people]);
+
   const allocationByPersonId = useMemo(() => {
     const map = new Map<string, number>();
     for (const person of data.people) {
@@ -45,6 +50,22 @@ export function SquadEditorPage() {
     }
     return map;
   }, [data]);
+
+  const squadFunding = useMemo(() => {
+    const assignedDaily = squadDailyCost(sq, (personId) => personById.get(personId));
+    const openDaily = onboarding.openPositions.reduce((sum, position) => {
+      const dayRate = position.dayRate ?? 0;
+      const allocation = position.allocationPercentage ?? 100;
+      return sum + (dayRate * allocation) / 100;
+    }, 0);
+
+    return {
+      assignedDaily,
+      openDaily,
+      assignedMonthly: assignedDaily * WORKING_DAYS_PER_MONTH,
+      openMonthly: openDaily * WORKING_DAYS_PER_MONTH,
+    };
+  }, [sq, onboarding.openPositions, personById]);
 
   const filteredPeople = useMemo(
     () => data.people.filter((p) => {
@@ -132,6 +153,12 @@ export function SquadEditorPage() {
         >
           Members
         </Link>
+        <Link
+          to={`/squads/${du.id}/${rt.id}/${sq.id}/financials`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          Financials
+        </Link>
         <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
           Editor
         </span>
@@ -151,6 +178,21 @@ export function SquadEditorPage() {
               <p className="text-xs text-gray-400 mt-1">Slots are based on assigned roles and open placeholders.</p>
             </div>
             <Badge color="blue">{roleSlots.length} slots</Badge>
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1.5">
+              <p className="uppercase tracking-wider text-emerald-700 font-semibold">Assigned Funding</p>
+              <p className="text-emerald-800 font-semibold">
+                {formatCost(squadFunding.assignedDaily)}/day · {formatCost(squadFunding.assignedMonthly)}/month
+              </p>
+            </div>
+            <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5">
+              <p className="uppercase tracking-wider text-amber-700 font-semibold">Open Position Demand</p>
+              <p className="text-amber-800 font-semibold">
+                {formatCost(squadFunding.openDaily)}/day · {formatCost(squadFunding.openMonthly)}/month
+              </p>
+            </div>
           </div>
 
           {warningState && (
@@ -175,6 +217,10 @@ export function SquadEditorPage() {
                 const isOverAllocated = personTotalAllocation > 100;
                 const isDroppable = Boolean(placeholder);
                 const isActiveDrop = isDroppable && activeDropRole === slot.id;
+                const assignmentDaily = assignment && person ? assignmentDailyCost(person, assignment) : 0;
+                const placeholderDaily = placeholder
+                  ? ((placeholder.dayRate ?? 0) * (placeholder.allocationPercentage ?? 100)) / 100
+                  : 0;
 
                 return (
                   <div
@@ -269,6 +315,12 @@ export function SquadEditorPage() {
                                 {assignment.allocationPercentage ?? 100}% · total {personTotalAllocation}%
                               </span>
                             </div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[9px] uppercase tracking-wide text-gray-400">Funding</span>
+                              <span className="text-[9px] font-semibold text-gray-600">
+                                {person.dayRate ? `${formatCost(assignmentDaily)}/day` : 'No day rate'}
+                              </span>
+                            </div>
                             <input
                               type="range"
                               min={0}
@@ -290,9 +342,12 @@ export function SquadEditorPage() {
                       </div>
                     ) : (
                       <div className="flex-1 border border-dashed border-gray-300 rounded px-2 py-3 text-center bg-white flex items-center justify-center">
-                        <p className="text-xs text-gray-400">
-                          {canEditSquad ? 'Drop person here' : 'Open placeholder'}
-                        </p>
+                        <div>
+                          <p className="text-xs text-gray-400">{canEditSquad ? 'Drop person here' : 'Open placeholder'}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            {placeholder?.dayRate ? `${formatCost(placeholderDaily)}/day` : 'No day rate set'}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -378,6 +433,7 @@ export function SquadEditorPage() {
                     </div>
                     <div className="min-w-0 mt-1 w-full">
                       <p className="text-[11px] font-medium text-gray-800 truncate">{p.name}</p>
+                      <p className="text-[9px] text-gray-500 truncate">{p.dayRate ? `${formatCost(p.dayRate)}/day` : 'No day rate'}</p>
                       {overAllocated && (
                         <p className="text-[9px] font-semibold text-red-600 truncate">{totalAllocation}%</p>
                       )}

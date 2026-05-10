@@ -83,6 +83,12 @@ export function SquadPage() {
         <span className="px-4 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 -mb-px">
           Members
         </span>
+        <Link
+          to={`/squads/${du.id}/${rt.id}/${sq.id}/financials`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          Financials
+        </Link>
         {canEditSquad && (
           <>
             <Link
